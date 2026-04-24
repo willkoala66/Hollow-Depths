@@ -1,0 +1,91 @@
+import { TILE } from "./constants";
+import type { EnemyKind, EnemySpawn } from "./types";
+
+export interface Enemy {
+  kind: EnemyKind;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  w: number;
+  h: number;
+  hp: number;
+  maxHp: number;
+  patrolMin: number;
+  patrolMax: number;
+  facing: 1 | -1;
+  cooldown: number;
+  alive: boolean;
+  hitFlash: number;
+  baseY: number;
+  baseX: number;
+  phase: number;
+  state: "idle" | "telegraph" | "attack";
+  damage: number;
+}
+
+export function createEnemy(spawn: EnemySpawn): Enemy {
+  const base: Enemy = {
+    kind: spawn.kind,
+    x: spawn.x,
+    y: spawn.y,
+    vx: 0,
+    vy: 0,
+    w: TILE,
+    h: TILE,
+    hp: spawn.hp ?? 2,
+    maxHp: spawn.hp ?? 2,
+    patrolMin: spawn.patrolMin ?? spawn.x - TILE * 3,
+    patrolMax: spawn.patrolMax ?? spawn.x + TILE * 3,
+    facing: 1,
+    cooldown: 0,
+    alive: true,
+    hitFlash: 0,
+    baseY: spawn.y,
+    baseX: spawn.x,
+    phase: Math.random() * Math.PI * 2,
+    state: "idle",
+    damage: 1,
+  };
+  switch (spawn.kind) {
+    case "slime":
+      base.w = 28;
+      base.h = 22;
+      base.vx = 1.0;
+      base.hp = spawn.hp ?? 2;
+      base.maxHp = base.hp;
+      break;
+    case "bat":
+      base.w = 26;
+      base.h = 20;
+      base.hp = spawn.hp ?? 1;
+      base.maxHp = base.hp;
+      break;
+    case "turret":
+      base.w = 30;
+      base.h = 30;
+      base.hp = spawn.hp ?? 3;
+      base.maxHp = base.hp;
+      break;
+    case "boss":
+      base.w = 60;
+      base.h = 60;
+      base.hp = spawn.hp ?? 12;
+      base.maxHp = base.hp;
+      base.damage = 1;
+      break;
+  }
+  return base;
+}
+
+export interface Projectile {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  w: number;
+  h: number;
+  fromPlayer: boolean;
+  damage: number;
+}

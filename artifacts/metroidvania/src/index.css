@@ -1,0 +1,239 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+:root {
+  --bg-deep: #050208;
+  --bg: #0a0612;
+  --fog: #1a0e2a;
+  --accent: #a070ff;
+  --accent-soft: #7af0c0;
+  --accent-warm: #ffd83a;
+  --text: #e8e4ff;
+  --text-dim: #7864a0;
+  --danger: #ff5a8a;
+}
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: italic;
+  font-weight: 500;
+  src: local('Cormorant Garamond Italic'), local('Georgia Italic');
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at center, #14082a 0%, #050208 70%, #000000 100%);
+}
+
+.game-shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(80, 30, 140, 0.18) 0%, transparent 60%),
+    linear-gradient(180deg, #0a0612 0%, #050208 100%);
+}
+
+.game-frame {
+  position: relative;
+  width: min(100%, calc((100vh - 80px) * (960 / 576)));
+  aspect-ratio: 960 / 576;
+  max-width: 1280px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #050208;
+  box-shadow:
+    0 0 0 1px rgba(160, 112, 255, 0.25),
+    0 0 60px rgba(160, 112, 255, 0.08),
+    0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+.game-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  cursor: crosshair;
+}
+
+.game-credits {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.title-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at center, rgba(20, 8, 42, 0.85) 0%, rgba(5, 2, 8, 0.95) 70%);
+  backdrop-filter: blur(2px);
+  animation: fade-in 0.6s ease-out;
+}
+
+.title-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+  padding: 32px;
+  max-width: 520px;
+}
+
+.title-pretitle {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.title-name {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(48px, 8vw, 88px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-shadow:
+    0 0 30px rgba(160, 112, 255, 0.4),
+    0 4px 30px rgba(0, 0, 0, 0.6);
+  background: linear-gradient(180deg, #f0eafe 0%, #a070ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.title-subtitle {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--text-dim);
+  max-width: 380px;
+  line-height: 1.5;
+}
+
+.title-start {
+  margin-top: 8px;
+  padding: 14px 28px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid rgba(160, 112, 255, 0.6);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.title-start:hover {
+  background: rgba(160, 112, 255, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 24px rgba(160, 112, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+.title-start:active {
+  transform: translateY(0);
+}
+
+.title-controls {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 24px;
+  font-size: 11px;
+  color: var(--text-dim);
+  width: 100%;
+  max-width: 360px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.control-label {
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.control-keys {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.control-keys kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-family: 'Menlo', monospace;
+  font-size: 10px;
+  color: var(--text);
+  background: rgba(160, 112, 255, 0.1);
+  border: 1px solid rgba(160, 112, 255, 0.3);
+  border-radius: 2px;
+}
+
+.title-hint {
+  margin: 12px 0 0 0;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(120, 100, 160, 0.6);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+::selection {
+  background: rgba(160, 112, 255, 0.3);
+  color: var(--text);
+}

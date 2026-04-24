@@ -25,3 +25,14 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Artifacts
+
+- **api-server** (`artifacts/api-server`) — Express API scaffold (not started by default).
+- **mockup-sandbox** (`artifacts/mockup-sandbox`) — Canvas component preview server.
+- **metroidvania** (`artifacts/metroidvania`) — "Hollow Depths", a 2D Metroidvania built in React + Vite.
+  - Canvas-rendered (no sprite assets), dark purple/teal aesthetic.
+  - Game engine in `src/game/`: constants, types, input, physics, player, enemies, world, game, render.
+  - Title screen + RAF loop with fixed 60Hz timestep in `src/pages/Game.tsx`.
+  - 4 interconnected rooms with ability-gated progression (double jump, dash), save shrines, HP system, and a boss.
+  - Controls: arrows/WASD move, Z/K/Space jump, X/L/Shift dash, C/J strike, Esc/P pause.
