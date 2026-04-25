@@ -358,6 +358,7 @@ export const ROOMS: Record<string, RoomDef> = {
         toX: 2 * TILE,
         toY: 14 * TILE,
         facing: "right",
+        requires: "doubleJump",
       },
     ],
     saves: [{ x: 2 * TILE, y: 15 * TILE - 4 }],
