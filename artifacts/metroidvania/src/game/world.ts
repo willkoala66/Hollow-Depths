@@ -180,12 +180,13 @@ export const ROOMS: Record<string, RoomDef> = {
         toY: 14 * TILE,
         facing: "right",
       },
-      // Drop down at row 16-17, cols 10-19
+      // Drop down at cracked floor (cols 10-19); rect extends above so a
+      // grounded player overlaps it and can press down to fall through.
       {
         x: 10 * TILE,
-        y: 16 * TILE,
+        y: 15 * TILE,
         w: TILE * 10,
-        h: TILE * 2,
+        h: TILE * 3,
         toRoom: "abyss",
         toX: 14 * TILE,
         toY: 2 * TILE,
