@@ -34,7 +34,7 @@ export interface DoorSpawn {
   toX: number;
   toY: number;
   facing: "left" | "right" | "up" | "down";
-  requires?: AbilityKey;
+  requires?: AbilityKey | AbilityKey[];
 }
 
 export interface SaveSpawn {

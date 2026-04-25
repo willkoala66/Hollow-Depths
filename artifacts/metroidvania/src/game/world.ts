@@ -188,6 +188,7 @@ export const ROOMS: Record<string, RoomDef> = {
         toX: 2 * TILE,
         toY: 14 * TILE,
         facing: "right",
+        requires: ["doubleJump", "dash"],
       },
       // Drop down at cracked floor (cols 10-19); rect extends above so a
       // grounded player overlaps it and can press down to fall through.

@@ -296,12 +296,13 @@ function drawSpike(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
 
 function drawDoor(
   ctx: CanvasRenderingContext2D,
-  d: { x: number; y: number; w: number; h: number; facing: string; requires?: string },
+  d: { x: number; y: number; w: number; h: number; facing: string; requires?: string | string[] },
   g: GameState,
 ) {
   const t = g.gameTime * 0.04;
   const pulse = 0.6 + Math.sin(t) * 0.2;
-  const locked = d.requires && !g.player.abilities[d.requires as never];
+  const reqs = d.requires ? (Array.isArray(d.requires) ? d.requires : [d.requires]) : [];
+  const locked = reqs.some((r) => !g.player.abilities[r as never]);
   const color = locked ? COLORS.doorLocked : COLORS.door;
   ctx.fillStyle = color;
   ctx.globalAlpha = pulse * (locked ? 0.5 : 0.9);

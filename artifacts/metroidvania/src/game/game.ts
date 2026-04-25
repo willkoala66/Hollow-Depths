@@ -355,7 +355,10 @@ export function updateGame(g: GameState, input: InputState) {
     p.transitionCooldown--;
   } else {
     for (const door of room.def.doors) {
-      if (door.requires && !p.abilities[door.requires]) continue;
+      if (door.requires) {
+        const reqs = Array.isArray(door.requires) ? door.requires : [door.requires];
+        if (reqs.some((r) => !p.abilities[r])) continue;
+      }
       const overlap = rectOverlap(
         { x: p.x, y: p.y, w: p.w, h: p.h },
         { x: door.x, y: door.y, w: door.w, h: door.h },
