@@ -34,36 +34,36 @@ export function createInputState(): InputState {
   };
 }
 
-const KEY_MAP: Record<string, keyof InputState> = {
-  ArrowLeft: "left",
-  ArrowRight: "right",
-  ArrowUp: "up",
-  ArrowDown: "down",
-  KeyA: "left",
-  KeyD: "right",
-  KeyW: "up",
-  KeyS: "down",
-  Space: "jump",
-  KeyZ: "jump",
-  KeyK: "jump",
-  ShiftLeft: "dash",
-  ShiftRight: "dash",
-  KeyX: "dash",
-  KeyL: "dash",
-  KeyC: "shoot",
-  KeyJ: "shoot",
-  KeyE: "interact",
-  Enter: "interact",
-  Escape: "pause",
-  KeyP: "pause",
+const KEY_MAP: Record<string, (keyof InputState)[]> = {
+  ArrowLeft: ["left"],
+  ArrowRight: ["right"],
+  ArrowUp: ["up", "jump"],
+  ArrowDown: ["down"],
+  KeyA: ["left"],
+  KeyD: ["right"],
+  KeyW: ["up", "jump"],
+  KeyS: ["down"],
+  Space: ["jump"],
+  KeyZ: ["jump"],
+  KeyK: ["jump"],
+  ShiftLeft: ["dash"],
+  ShiftRight: ["dash"],
+  KeyX: ["dash"],
+  KeyL: ["dash"],
+  KeyC: ["shoot"],
+  KeyJ: ["shoot"],
+  KeyE: ["interact"],
+  Enter: ["interact"],
+  Escape: ["pause"],
+  KeyP: ["pause"],
 };
 
 export function attachInput(state: InputState): () => void {
   const held = new Set<string>();
 
   const onDown = (e: KeyboardEvent) => {
-    const action = KEY_MAP[e.code];
-    if (!action) return;
+    const actions = KEY_MAP[e.code];
+    if (!actions) return;
     if (
       e.code === "Space" ||
       e.code === "ArrowUp" ||
@@ -75,27 +75,32 @@ export function attachInput(state: InputState): () => void {
     }
     if (held.has(e.code)) return;
     held.add(e.code);
-    (state as unknown as Record<string, boolean>)[action] = true;
-    const pressedKey = `${action}Pressed`;
-    if (pressedKey in state) {
-      (state as unknown as Record<string, boolean>)[pressedKey] = true;
+    for (const action of actions) {
+      (state as unknown as Record<string, boolean>)[action] = true;
+      const pressedKey = `${action}Pressed`;
+      if (pressedKey in state) {
+        (state as unknown as Record<string, boolean>)[pressedKey] = true;
+      }
     }
   };
 
   const onUp = (e: KeyboardEvent) => {
-    const action = KEY_MAP[e.code];
-    if (!action) return;
+    const actions = KEY_MAP[e.code];
+    if (!actions) return;
     held.delete(e.code);
-    // Recompute - only release if no other key for that action is held
-    let stillHeld = false;
-    for (const code of held) {
-      if (KEY_MAP[code] === action) {
-        stillHeld = true;
-        break;
+    for (const action of actions) {
+      // Only release if no other held key still maps to this action
+      let stillHeld = false;
+      for (const code of held) {
+        const otherActions = KEY_MAP[code];
+        if (otherActions && otherActions.includes(action)) {
+          stillHeld = true;
+          break;
+        }
       }
-    }
-    if (!stillHeld) {
-      (state as unknown as Record<string, boolean>)[action] = false;
+      if (!stillHeld) {
+        (state as unknown as Record<string, boolean>)[action] = false;
+      }
     }
   };
 

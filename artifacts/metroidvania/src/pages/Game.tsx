@@ -87,7 +87,7 @@ function TitleScreen({ onStart }: { onStart: () => void }) {
         </button>
         <div className="title-controls">
           <Control label="Move" keys={["←", "→", "A", "D"]} />
-          <Control label="Jump" keys={["Z", "K", "Space"]} />
+          <Control label="Jump" keys={["↑", "W", "Z", "K", "Space"]} />
           <Control label="Dash" keys={["X", "L", "Shift"]} />
           <Control label="Strike" keys={["C", "J"]} />
           <Control label="Pause" keys={["Esc", "P"]} />
