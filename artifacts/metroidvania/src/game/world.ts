@@ -114,7 +114,16 @@ export const ROOMS: Record<string, RoomDef> = {
     name: "Antechamber",
     tiles: parseTiles(antechamberRows),
     enemies: [],
-    pickups: [],
+    pickups: [
+      // Early dash relic on the higher platform (row 9, cols 14-17)
+      {
+        kind: "ability",
+        ability: "dash",
+        x: 16 * TILE - 9,
+        y: 8 * TILE + 6,
+        id: "dash-antechamber",
+      },
+    ],
     doors: [
       {
         x: 29 * TILE,
