@@ -4,10 +4,13 @@ import { currentRoom, type GameState } from "./game";
 import type { Player } from "./player";
 
 const MAP_LAYOUT: Record<string, { gx: number; gy: number }> = {
-  antechamber: { gx: 0, gy: 0 },
-  tunnel: { gx: 1, gy: 0 },
-  abyss: { gx: 1, gy: 1 },
-  boss_lair: { gx: 2, gy: 0 },
+  cistern: { gx: 0, gy: 0 },
+  antechamber: { gx: 1, gy: 0 },
+  tunnel: { gx: 2, gy: 0 },
+  boss_lair: { gx: 3, gy: 0 },
+  abyss: { gx: 2, gy: 1 },
+  reach: { gx: 3, gy: 1 },
+  vault: { gx: 3, gy: 2 },
 };
 
 const ABILITY_NAMES: Record<string, string> = {
