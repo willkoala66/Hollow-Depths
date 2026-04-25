@@ -29,6 +29,7 @@ export interface Enemy {
     | "slam_fall"
     | "dash_charge"
     | "dashing"
+    | "aim_charge"
     | "recover";
   damage: number;
 }
@@ -79,7 +80,7 @@ export function createEnemy(spawn: EnemySpawn): Enemy {
     case "boss":
       base.w = 60;
       base.h = 60;
-      base.hp = spawn.hp ?? 18;
+      base.hp = spawn.hp ?? 24;
       base.maxHp = base.hp;
       base.damage = 1;
       base.cooldown = 90;

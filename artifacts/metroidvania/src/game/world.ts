@@ -465,7 +465,7 @@ export const ROOMS: Record<string, RoomDef> = {
         kind: "boss",
         x: 15 * TILE - 30,
         y: 14 * TILE - 28,
-        hp: 18,
+        hp: 24,
       },
     ],
     pickups: [],

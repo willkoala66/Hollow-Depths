@@ -706,24 +706,55 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
       // Phase-based behavior
       const hpPct = e.hp / e.maxHp;
       const phase2 = hpPct < 0.5;
-      const moveSpeed = phase2 ? 2.6 : 1.8;
-      const tg = phase2 ? 22 : 30;
+      const phase3 = hpPct < 0.25;
+      const moveSpeed = phase3 ? 3.2 : phase2 ? 2.6 : 1.8;
+      const tg = phase3 ? 16 : phase2 ? 22 : 30;
+
+      const pickAttack = () => {
+        const r = Math.random();
+        if (phase2 && r < 0.18) {
+          e.state = "aim_charge";
+          e.cooldown = tg;
+        } else if (r < 0.4) {
+          e.state = "telegraph";
+          e.cooldown = tg;
+        } else if (r < 0.75) {
+          e.state = "slam_charge";
+          e.cooldown = tg;
+        } else {
+          e.state = "dash_charge";
+          e.cooldown = tg;
+        }
+      };
 
       if (e.state === "idle") {
         e.vx = Math.sign(dx) * moveSpeed * 0.6;
         if (e.cooldown <= 0) {
-          // Pick next attack at random
-          const r = Math.random();
-          if (r < 0.4) {
-            e.state = "telegraph";
-            e.cooldown = tg;
-          } else if (r < 0.75) {
-            e.state = "slam_charge";
-            e.cooldown = tg;
-          } else {
-            e.state = "dash_charge";
-            e.cooldown = tg;
-          }
+          pickAttack();
+        }
+      } else if (e.state === "aim_charge") {
+        e.vx *= 0.8;
+        if (e.cooldown <= 0) {
+          // Fast aimed bolt at player position
+          const tx = p.x + p.w / 2;
+          const ty = p.y + p.h / 2;
+          const ox = e.x + e.w / 2;
+          const oy = e.y + e.h / 2;
+          const ang = Math.atan2(ty - oy, tx - ox);
+          const speed = phase3 ? 9 : 7.5;
+          g.projectiles.push({
+            x: ox - 7,
+            y: oy - 7,
+            vx: Math.cos(ang) * speed,
+            vy: Math.sin(ang) * speed,
+            life: 160,
+            w: 14,
+            h: 14,
+            fromPlayer: false,
+            damage: 1,
+          });
+          e.state = "recover";
+          e.cooldown = phase3 ? 22 : 40;
         }
       } else if (e.state === "telegraph") {
         e.vx *= 0.85;
@@ -788,8 +819,13 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
       } else if (e.state === "recover") {
         e.vx *= 0.88;
         if (e.cooldown <= 0) {
-          e.state = "idle";
-          e.cooldown = phase2 ? 50 : 90;
+          // Phase 3 enraged: 60% chance to chain immediately into another attack
+          if (phase3 && Math.random() < 0.6) {
+            pickAttack();
+          } else {
+            e.state = "idle";
+            e.cooldown = phase3 ? 28 : phase2 ? 50 : 90;
+          }
         }
       }
 
@@ -817,6 +853,20 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
             fromPlayer: false,
             damage: 1,
           });
+          // Phase 3: extra slow inner shockwave pair
+          if (phase3) {
+            g.projectiles.push({
+              x: e.x + e.w / 2 - 9,
+              y: e.y + e.h - 18,
+              vx: dir * 2.5,
+              vy: 0,
+              life: 160,
+              w: 18,
+              h: 18,
+              fromPlayer: false,
+              damage: 1,
+            });
+          }
         }
         spawnParticles(
           g,

@@ -579,11 +579,13 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, time: number) {
       ctx.fillStyle =
         e.state === "telegraph"
           ? "#ffffaa"
-          : armored
-            ? "#fff080"
-            : slamming
-              ? "#ff90c0"
-              : "#ff5070";
+          : e.state === "aim_charge"
+            ? "#80ffff"
+            : armored
+              ? "#fff080"
+              : slamming
+                ? "#ff90c0"
+                : "#ff5070";
       const ex = e.facing === 1 ? 4 : 0;
       ctx.fillRect(e.x + 14 + ex, eyeY + 1, 4, 4);
       ctx.fillRect(e.x + e.w - 22 + ex, eyeY + 1, 4, 4);
