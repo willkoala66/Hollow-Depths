@@ -158,16 +158,7 @@ export const ROOMS: Record<string, RoomDef> = {
         patrolMax: 18 * TILE,
       },
     ],
-    pickups: [
-      // Dash sits on the small high platform at row 6, cols 22-25
-      {
-        kind: "ability",
-        ability: "dash",
-        x: 23 * TILE,
-        y: 5 * TILE,
-        id: "dash-tunnel",
-      },
-    ],
+    pickups: [],
     doors: [
       {
         x: 0,
