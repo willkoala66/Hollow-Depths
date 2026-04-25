@@ -20,7 +20,16 @@ export interface Enemy {
   baseY: number;
   baseX: number;
   phase: number;
-  state: "idle" | "telegraph" | "attack";
+  state:
+    | "idle"
+    | "telegraph"
+    | "attack"
+    | "slam_charge"
+    | "slam_jump"
+    | "slam_fall"
+    | "dash_charge"
+    | "dashing"
+    | "recover";
   damage: number;
 }
 
@@ -70,9 +79,10 @@ export function createEnemy(spawn: EnemySpawn): Enemy {
     case "boss":
       base.w = 60;
       base.h = 60;
-      base.hp = spawn.hp ?? 12;
+      base.hp = spawn.hp ?? 18;
       base.maxHp = base.hp;
       base.damage = 1;
+      base.cooldown = 90;
       break;
   }
   return base;

@@ -513,9 +513,23 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, time: number) {
     }
     case "boss": {
       const pulse = Math.sin(time * 0.08) * 4;
-      ctx.fillStyle = flash ? "#ffffff" : "#3a0a18";
+      const armored = e.state === "dash_charge" || e.state === "dashing";
+      const slamming =
+        e.state === "slam_charge" ||
+        e.state === "slam_jump" ||
+        e.state === "slam_fall";
+      // Armored aura tint
+      ctx.fillStyle = flash
+        ? "#ffffff"
+        : armored
+          ? "#5a3008"
+          : "#3a0a18";
       ctx.fillRect(e.x - 4, e.y - 4, e.w + 8, e.h + 8);
-      ctx.fillStyle = flash ? "#ffffff" : COLORS.enemyBoss;
+      ctx.fillStyle = flash
+        ? "#ffffff"
+        : armored
+          ? "#ffb050"
+          : COLORS.enemyBoss;
       ctx.fillRect(e.x, e.y, e.w, e.h);
       // Crown
       ctx.fillStyle = flash ? "#ffffff" : "#ffb060";
@@ -533,7 +547,14 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, time: number) {
       const eyeY = e.y + 24;
       ctx.fillRect(e.x + 14, eyeY, 8, 6);
       ctx.fillRect(e.x + e.w - 22, eyeY, 8, 6);
-      ctx.fillStyle = e.state === "telegraph" ? "#ffffaa" : "#ff5070";
+      ctx.fillStyle =
+        e.state === "telegraph"
+          ? "#ffffaa"
+          : armored
+            ? "#fff080"
+            : slamming
+              ? "#ff90c0"
+              : "#ff5070";
       const ex = e.facing === 1 ? 4 : 0;
       ctx.fillRect(e.x + 14 + ex, eyeY + 1, 4, 4);
       ctx.fillRect(e.x + e.w - 22 + ex, eyeY + 1, 4, 4);

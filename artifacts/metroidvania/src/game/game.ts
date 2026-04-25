@@ -432,9 +432,10 @@ export function updateGame(g: GameState, input: InputState) {
   for (const e of room.enemies) {
     if (!e.alive) continue;
     updateEnemy(g, e, room.def.tiles);
-    // Player collision
+    // Player collision (dashing grants i-frames so dash can be used to escape)
     if (
       p.invuln === 0 &&
+      p.dashTimer === 0 &&
       rectOverlap(
         { x: p.x, y: p.y, w: p.w, h: p.h },
         { x: e.x, y: e.y, w: e.w, h: e.h },
@@ -482,6 +483,19 @@ export function updateGame(g: GameState, input: InputState) {
             { x: e.x, y: e.y, w: e.w, h: e.h },
           )
         ) {
+          // Boss is armored while winding up or executing a dash charge
+          const armored =
+            e.kind === "boss" &&
+            (e.state === "dash_charge" || e.state === "dashing");
+          if (armored) {
+            spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 5, "#ffb060", {
+              spread: 3,
+              gravity: 0,
+              life: 14,
+            });
+            g.projectiles.splice(i, 1);
+            break;
+          }
           e.hp -= pr.damage;
           e.hitFlash = 8;
           spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 6, "#caf6ff", {
@@ -512,9 +526,10 @@ export function updateGame(g: GameState, input: InputState) {
         }
       }
     } else {
-      // enemy projectile hits player
+      // enemy projectile hits player (dashing grants i-frames)
       if (
         p.invuln === 0 &&
+        p.dashTimer === 0 &&
         rectOverlap(
           { x: pr.x, y: pr.y, w: pr.w, h: pr.h },
           { x: p.x, y: p.y, w: p.w, h: p.h },
@@ -673,30 +688,42 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
       e.phase += 0.04;
       e.cooldown--;
       e.vy += 0.5;
-      if (e.vy > 12) e.vy = 12;
+      if (e.vy > 14) e.vy = 14;
 
       const dx = p.x + p.w / 2 - (e.x + e.w / 2);
       e.facing = dx >= 0 ? 1 : -1;
 
       // Phase-based behavior
       const hpPct = e.hp / e.maxHp;
-      const moveSpeed = hpPct < 0.5 ? 2.4 : 1.6;
+      const phase2 = hpPct < 0.5;
+      const moveSpeed = phase2 ? 2.6 : 1.8;
+      const tg = phase2 ? 22 : 30;
 
       if (e.state === "idle") {
-        e.vx = Math.sign(dx) * moveSpeed;
-        if (e.cooldown <= 0 && Math.abs(dx) < 360) {
-          e.state = "telegraph";
-          e.cooldown = 30;
+        e.vx = Math.sign(dx) * moveSpeed * 0.6;
+        if (e.cooldown <= 0) {
+          // Pick next attack at random
+          const r = Math.random();
+          if (r < 0.4) {
+            e.state = "telegraph";
+            e.cooldown = tg;
+          } else if (r < 0.75) {
+            e.state = "slam_charge";
+            e.cooldown = tg;
+          } else {
+            e.state = "dash_charge";
+            e.cooldown = tg;
+          }
         }
       } else if (e.state === "telegraph") {
         e.vx *= 0.85;
         if (e.cooldown <= 0) {
-          e.state = "attack";
-          e.cooldown = 1;
-          // Triple shot fan
-          for (let i = -1; i <= 1; i++) {
-            const angle = i * 0.25;
-            const speed = 5;
+          // Spread shot fan (5 in phase 2, 3 in phase 1)
+          const shots = phase2 ? 5 : 3;
+          const half = (shots - 1) / 2;
+          const speed = phase2 ? 6 : 5;
+          for (let i = -half; i <= half; i++) {
+            const angle = i * 0.22;
             g.projectiles.push({
               x: e.x + e.w / 2 - 6,
               y: e.y + e.h / 2 - 6,
@@ -709,20 +736,89 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
               damage: 1,
             });
           }
-          // Dash toward player
-          e.vx = e.facing * 6;
+          e.state = "recover";
+          e.cooldown = phase2 ? 50 : 70;
         }
-      } else if (e.state === "attack") {
-        e.cooldown++;
-        e.vx *= 0.95;
-        if (e.cooldown > 40) {
+      } else if (e.state === "slam_charge") {
+        // Crouch/wind up before leaping
+        e.vx *= 0.7;
+        if (e.cooldown <= 0) {
+          e.vy = -11;
+          e.vx = Math.sign(dx) * 3;
+          e.state = "slam_jump";
+          e.cooldown = 60;
+        }
+      } else if (e.state === "slam_jump") {
+        // Track horizontally toward player while airborne
+        e.vx = Math.sign(dx) * 3;
+        if (e.vy >= 0) {
+          // Switch to fast fall
+          e.vy = 14;
+          e.state = "slam_fall";
+        }
+      } else if (e.state === "slam_fall") {
+        // Falling fast — collision below triggers shockwave
+        e.vy = Math.max(e.vy, 12);
+        e.vx *= 0.9;
+      } else if (e.state === "dash_charge") {
+        // Telegraph then dash horizontally across the arena
+        e.vx *= 0.6;
+        if (e.cooldown <= 0) {
+          e.vx = e.facing * (phase2 ? 11 : 9);
+          e.state = "dashing";
+          e.cooldown = 35;
+        }
+      } else if (e.state === "dashing") {
+        // Maintain charge speed, decay slowly
+        e.vx *= 0.96;
+        if (Math.abs(e.vx) < 1.5 || e.cooldown <= 0) {
+          e.state = "recover";
+          e.cooldown = phase2 ? 35 : 55;
+        }
+      } else if (e.state === "recover") {
+        e.vx *= 0.88;
+        if (e.cooldown <= 0) {
           e.state = "idle";
-          e.cooldown = 80 + Math.random() * 40;
+          e.cooldown = phase2 ? 50 : 90;
         }
       }
 
       const r = moveAndCollide(e, tiles);
-      if (r.hitX) e.vx = 0;
+      if (r.hitX) {
+        e.vx = 0;
+        // Bonking a wall mid-dash ends it early
+        if (e.state === "dashing") {
+          e.state = "recover";
+          e.cooldown = phase2 ? 35 : 55;
+        }
+      }
+      // Shockwaves on slam landing
+      if (e.state === "slam_fall" && r.onGround) {
+        g.shake = Math.max(g.shake, 18);
+        for (const dir of [-1, 1]) {
+          g.projectiles.push({
+            x: e.x + e.w / 2 - 9,
+            y: e.y + e.h - 18,
+            vx: dir * 5,
+            vy: 0,
+            life: 110,
+            w: 18,
+            h: 18,
+            fromPlayer: false,
+            damage: 1,
+          });
+        }
+        spawnParticles(
+          g,
+          e.x + e.w / 2,
+          e.y + e.h,
+          22,
+          "#ff3060",
+          { spread: 5, gravity: -0.05, life: 32 },
+        );
+        e.state = "recover";
+        e.cooldown = phase2 ? 30 : 50;
+      }
       break;
     }
   }
