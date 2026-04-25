@@ -4,12 +4,12 @@ export const ROOM_H = 18;
 export const VIEW_W = TILE * ROOM_W;
 export const VIEW_H = TILE * ROOM_H;
 
-export const GRAVITY = 0.55;
+export const GRAVITY = 0.5;
 export const MAX_FALL = 14;
-export const JUMP_VEL = -10.5;
-export const MOVE_SPEED = 3.6;
-export const AIR_ACCEL = 0.45;
-export const GROUND_ACCEL = 0.8;
+export const JUMP_VEL = -12.2;
+export const MOVE_SPEED = 4.0;
+export const AIR_ACCEL = 0.55;
+export const GROUND_ACCEL = 0.9;
 export const FRICTION = 0.78;
 export const DASH_SPEED = 9.5;
 export const DASH_DURATION = 14;
