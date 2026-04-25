@@ -218,6 +218,7 @@ function performTransition(g: GameState) {
   p.vy = 0;
   p.dashTimer = 0;
   p.knockback = 0;
+  p.transitionCooldown = 30;
   if (t.facing === "right") p.facing = 1;
   if (t.facing === "left") p.facing = -1;
 }
@@ -350,23 +351,27 @@ export function updateGame(g: GameState, input: InputState) {
   }
 
   // Check doors
-  for (const door of room.def.doors) {
-    if (door.requires && !p.abilities[door.requires]) continue;
-    const overlap = rectOverlap(
-      { x: p.x, y: p.y, w: p.w, h: p.h },
-      { x: door.x, y: door.y, w: door.w, h: door.h },
-    );
-    if (overlap) {
-      // Direction filter
-      let goes = true;
-      if (door.facing === "right" && p.vx < 0.5 && !input.right) goes = false;
-      if (door.facing === "left" && p.vx > -0.5 && !input.left) goes = false;
-      if (door.facing === "up" && p.vy > -1) goes = false;
-      // For down doors (drops), ensure player is moving down/falling
-      if (door.facing === "down" && p.vy < 0) goes = false;
-      if (goes) {
-        applyTransition(g, door);
-        return;
+  if (p.transitionCooldown > 0) {
+    p.transitionCooldown--;
+  } else {
+    for (const door of room.def.doors) {
+      if (door.requires && !p.abilities[door.requires]) continue;
+      const overlap = rectOverlap(
+        { x: p.x, y: p.y, w: p.w, h: p.h },
+        { x: door.x, y: door.y, w: door.w, h: door.h },
+      );
+      if (overlap) {
+        // Direction filter
+        let goes = true;
+        if (door.facing === "right" && p.vx < 0.5 && !input.right) goes = false;
+        if (door.facing === "left" && p.vx > -0.5 && !input.left) goes = false;
+        if (door.facing === "up" && !input.up) goes = false;
+        // Drop-through doors require explicit down-press while grounded above
+        if (door.facing === "down" && !input.down) goes = false;
+        if (goes) {
+          applyTransition(g, door);
+          return;
+        }
       }
     }
   }

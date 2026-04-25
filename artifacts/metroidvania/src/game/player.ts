@@ -41,6 +41,7 @@ export interface Player {
   maxHp: number;
   invuln: number;
   knockback: number;
+  transitionCooldown: number;
   abilities: Abilities;
   collectedPickups: Set<string>;
   alive: boolean;
@@ -73,6 +74,7 @@ export function createPlayer(spawnRoom: string, x: number, y: number): Player {
     maxHp: MAX_HP,
     invuln: 0,
     knockback: 0,
+    transitionCooldown: 0,
     abilities: { doubleJump: false, dash: false, blast: true },
     collectedPickups: new Set(),
     alive: true,
