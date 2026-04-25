@@ -706,9 +706,8 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
       // Phase-based behavior
       const hpPct = e.hp / e.maxHp;
       const phase2 = hpPct < 0.5;
-      const phase3 = hpPct < 0.25;
-      const moveSpeed = phase3 ? 3.2 : phase2 ? 2.6 : 1.8;
-      const tg = phase3 ? 16 : phase2 ? 22 : 30;
+      const moveSpeed = phase2 ? 3.2 : 1.8;
+      const tg = phase2 ? 16 : 30;
 
       const pickAttack = () => {
         const r = Math.random();
@@ -741,7 +740,7 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
           const ox = e.x + e.w / 2;
           const oy = e.y + e.h / 2;
           const ang = Math.atan2(ty - oy, tx - ox);
-          const speed = phase3 ? 9 : 7.5;
+          const speed = phase2 ? 9 : 7.5;
           g.projectiles.push({
             x: ox - 7,
             y: oy - 7,
@@ -754,7 +753,7 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
             damage: 1,
           });
           e.state = "recover";
-          e.cooldown = phase3 ? 22 : 40;
+          e.cooldown = phase2 ? 22 : 40;
         }
       } else if (e.state === "telegraph") {
         e.vx *= 0.85;
@@ -784,22 +783,26 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
         // Crouch/wind up before leaping
         e.vx *= 0.7;
         if (e.cooldown <= 0) {
-          e.vy = -11;
-          e.vx = Math.sign(dx) * 3;
+          // Phase 2 leaps higher so it can land on the arena platforms
+          e.vy = phase2 ? -16 : -11;
+          e.vx = Math.sign(dx) * (phase2 ? 4 : 3);
           e.state = "slam_jump";
-          e.cooldown = 60;
+          e.cooldown = 80;
         }
       } else if (e.state === "slam_jump") {
         // Track horizontally toward player while airborne
-        e.vx = Math.sign(dx) * 3;
+        e.vx = Math.sign(dx) * (phase2 ? 4 : 3);
         if (e.vy >= 0) {
-          // Switch to fast fall
-          e.vy = 14;
+          // In phase 2, fall normally so the boss can settle on platforms;
+          // in phase 1, fast-fall to ground for the classic slam.
+          if (!phase2) {
+            e.vy = 14;
+          }
           e.state = "slam_fall";
         }
       } else if (e.state === "slam_fall") {
         // Falling fast — collision below triggers shockwave
-        e.vy = Math.max(e.vy, 12);
+        if (!phase2) e.vy = Math.max(e.vy, 12);
         e.vx *= 0.9;
       } else if (e.state === "dash_charge") {
         // Telegraph then dash horizontally across the arena
@@ -819,12 +822,12 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
       } else if (e.state === "recover") {
         e.vx *= 0.88;
         if (e.cooldown <= 0) {
-          // Phase 3 enraged: 60% chance to chain immediately into another attack
-          if (phase3 && Math.random() < 0.6) {
+          // Phase 2 enraged: 60% chance to chain immediately into another attack
+          if (phase2 && Math.random() < 0.6) {
             pickAttack();
           } else {
             e.state = "idle";
-            e.cooldown = phase3 ? 28 : phase2 ? 50 : 90;
+            e.cooldown = phase2 ? 28 : 90;
           }
         }
       }
@@ -853,8 +856,8 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
             fromPlayer: false,
             damage: 1,
           });
-          // Phase 3: extra slow inner shockwave pair
-          if (phase3) {
+          // Phase 2: extra slow inner shockwave pair
+          if (phase2) {
             g.projectiles.push({
               x: e.x + e.w / 2 - 9,
               y: e.y + e.h - 18,
