@@ -17,11 +17,13 @@ const ABILITY_NAMES: Record<string, string> = {
   doubleJump: "Wraith Wings",
   dash: "Phase Dash",
   blast: "Soul Shard",
+  vessel: "Heart Vessel",
 };
 const ABILITY_DESC: Record<string, string> = {
   doubleJump: "Press jump again in the air",
   dash: "Press Shift / X to dash forward",
   blast: "Press C / J to fire energy",
+  vessel: "Maximum vitality increased",
 };
 
 export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
@@ -377,7 +379,12 @@ function drawPickup(
   g.addColorStop(1, "rgba(255,216,58,0)");
   ctx.fillStyle = g;
   ctx.fillRect(cx - 40, cy - 40, 80, 80);
-  ctx.fillStyle = kind === "heart" ? "#ff5a8a" : COLORS.pickup;
+  ctx.fillStyle =
+    kind === "heart"
+      ? "#ff5a8a"
+      : kind === "vessel"
+        ? "#ff90c0"
+        : COLORS.pickup;
   ctx.beginPath();
   if (kind === "heart") {
     ctx.arc(cx - 4, cy - 2, 5, 0, Math.PI * 2);
@@ -389,6 +396,25 @@ function drawPickup(
     ctx.lineTo(cx, cy + 10);
     ctx.closePath();
     ctx.fill();
+  } else if (kind === "vessel") {
+    // Larger crowned heart with inner sparkle
+    ctx.arc(cx - 6, cy - 3, 7, 0, Math.PI * 2);
+    ctx.arc(cx + 6, cy - 3, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx - 13, cy);
+    ctx.lineTo(cx + 13, cy);
+    ctx.lineTo(cx, cy + 14);
+    ctx.closePath();
+    ctx.fill();
+    // Crown glints
+    ctx.fillStyle = "#ffe0a0";
+    ctx.fillRect(cx - 10, cy - 12, 3, 3);
+    ctx.fillRect(cx - 2, cy - 14, 3, 3);
+    ctx.fillRect(cx + 7, cy - 12, 3, 3);
+    // Inner sparkle
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(cx - 4, cy - 5, 2, 2);
   } else {
     // Diamond
     ctx.moveTo(cx, cy - 10);

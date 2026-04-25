@@ -64,7 +64,7 @@ export interface GameState {
   victory: boolean;
   victoryTimer: number;
   shake: number;
-  abilityToast: { ability: AbilityKey; timer: number } | null;
+  abilityToast: { ability: string; timer: number } | null;
   collectedAll: Set<string>;
 }
 
@@ -401,6 +401,16 @@ export function updateGame(g: GameState, input: InputState) {
         g.shake = 6;
       } else if (pk.kind === "heart") {
         p.hp = Math.min(p.maxHp, p.hp + 1);
+      } else if (pk.kind === "vessel") {
+        p.maxHp += 1;
+        p.hp = p.maxHp;
+        g.abilityToast = { ability: "vessel", timer: 180 };
+        spawnParticles(g, pk.x + 9, pk.y + 9, 28, "#ff5a8a", {
+          spread: 5,
+          gravity: -0.1,
+          life: 55,
+        });
+        g.shake = 8;
       }
     }
   }

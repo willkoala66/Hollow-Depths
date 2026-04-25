@@ -18,7 +18,7 @@ export interface EnemySpawn {
 }
 
 export interface PickupSpawn {
-  kind: "ability" | "heart";
+  kind: "ability" | "heart" | "vessel";
   ability?: AbilityKey;
   x: number;
   y: number;

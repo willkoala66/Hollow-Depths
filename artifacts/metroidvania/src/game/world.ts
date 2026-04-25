@@ -434,10 +434,10 @@ export const ROOMS: Record<string, RoomDef> = {
     ],
     pickups: [
       {
-        kind: "heart",
+        kind: "vessel",
         x: 26 * TILE - 9,
         y: 15 * TILE - 18,
-        id: "heart-vault",
+        id: "vessel-vault",
       },
     ],
     doors: [
