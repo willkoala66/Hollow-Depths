@@ -66,6 +66,7 @@ export interface GameState {
   shake: number;
   abilityToast: { ability: string; timer: number } | null;
   collectedAll: Set<string>;
+  bossDefeated: boolean;
 }
 
 export interface Particle {
@@ -105,6 +106,7 @@ export function createGame(): GameState {
     shake: 0,
     abilityToast: null,
     collectedAll: new Set(),
+    bossDefeated: false,
   };
 }
 
@@ -145,18 +147,23 @@ function tryShoot(g: GameState) {
   p.shootCooldown = SHOOT_COOLDOWN;
   const px = p.facing === 1 ? p.x + p.w : p.x;
   const py = p.y + p.h * 0.45;
+  const pierce = p.abilities.pierce;
   g.projectiles.push({
     x: px - 4,
     y: py - 4,
     vx: PROJECTILE_SPEED * p.facing,
     vy: 0,
     life: PROJECTILE_LIFE,
-    w: 8,
-    h: 8,
+    w: pierce ? 10 : 8,
+    h: pierce ? 10 : 8,
     fromPlayer: true,
     damage: 1,
+    pierce,
   });
-  spawnParticles(g, px, py, 3, "#7af0ff", { spread: 2, gravity: 0 });
+  spawnParticles(g, px, py, 3, pierce ? "#ffd060" : "#7af0ff", {
+    spread: 2,
+    gravity: 0,
+  });
 }
 
 function tryDash(g: GameState) {
@@ -359,6 +366,7 @@ export function updateGame(g: GameState, input: InputState) {
         const reqs = Array.isArray(door.requires) ? door.requires : [door.requires];
         if (reqs.some((r) => !p.abilities[r])) continue;
       }
+      if (door.requiresBoss && !g.bossDefeated) continue;
       const overlap = rectOverlap(
         { x: p.x, y: p.y, w: p.w, h: p.h },
         { x: door.x, y: door.y, w: door.w, h: door.h },
@@ -485,55 +493,77 @@ export function updateGame(g: GameState, input: InputState) {
       continue;
     }
     if (pr.fromPlayer) {
+      let consumed = false;
       for (const e of room.enemies) {
         if (!e.alive) continue;
+        if (pr.hitEnemies && pr.hitEnemies.has(e)) continue;
         if (
-          rectOverlap(
+          !rectOverlap(
             { x: pr.x, y: pr.y, w: pr.w, h: pr.h },
             { x: e.x, y: e.y, w: e.w, h: e.h },
           )
         ) {
-          // Boss is armored while winding up or executing a dash charge
-          const armored =
-            e.kind === "boss" &&
-            (e.state === "dash_charge" || e.state === "dashing");
-          if (armored) {
-            spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 5, "#ffb060", {
-              spread: 3,
-              gravity: 0,
-              life: 14,
-            });
-            g.projectiles.splice(i, 1);
-            break;
-          }
-          e.hp -= pr.damage;
-          e.hitFlash = 8;
-          spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 6, "#caf6ff", {
+          continue;
+        }
+        // Boss/Sovereign is armored while winding up or executing a dash
+        // charge. Pierce shots punch right through the armor.
+        const armored =
+          (e.kind === "boss" || e.kind === "sovereign") &&
+          (e.state === "dash_charge" || e.state === "dashing");
+        if (armored && !pr.pierce) {
+          spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 5, "#ffb060", {
             spread: 3,
             gravity: 0,
-            life: 16,
+            life: 14,
           });
-          if (e.hp <= 0) {
-            e.alive = false;
-            spawnParticles(
-              g,
-              e.x + e.w / 2,
-              e.y + e.h / 2,
-              16,
-              enemyColor(e.kind),
-              { spread: 4, gravity: 0.1, life: 38 },
-            );
-            if (e.kind === "boss") {
-              g.victory = true;
-              g.victoryTimer = 0;
-              g.shake = 30;
-            } else {
-              g.shake = Math.max(g.shake, 3);
-            }
-          }
           g.projectiles.splice(i, 1);
+          consumed = true;
           break;
         }
+        e.hp -= pr.damage;
+        e.hitFlash = 8;
+        spawnParticles(
+          g,
+          pr.x + pr.w / 2,
+          pr.y + pr.h / 2,
+          6,
+          pr.pierce ? "#ffd060" : "#caf6ff",
+          { spread: 3, gravity: 0, life: 16 },
+        );
+        if (e.hp <= 0) {
+          e.alive = false;
+          spawnParticles(
+            g,
+            e.x + e.w / 2,
+            e.y + e.h / 2,
+            16,
+            enemyColor(e.kind),
+            { spread: 4, gravity: 0.1, life: 38 },
+          );
+          if (e.kind === "sovereign") {
+            g.victory = true;
+            g.victoryTimer = 0;
+            g.shake = 36;
+          } else if (e.kind === "boss") {
+            g.bossDefeated = true;
+            g.shake = 30;
+          } else {
+            g.shake = Math.max(g.shake, 3);
+          }
+        }
+        if (pr.pierce) {
+          // Track to avoid hitting the same target multiple times this frame
+          pr.hitEnemies ??= new Set();
+          pr.hitEnemies.add(e);
+          // Continue iterating so the bolt can hit additional enemies
+        } else {
+          g.projectiles.splice(i, 1);
+          consumed = true;
+          break;
+        }
+      }
+      if (consumed) {
+        // already removed
       }
     } else {
       // enemy projectile hits player (dashing grants i-frames)
@@ -605,6 +635,10 @@ function enemyColor(kind: Enemy["kind"]): string {
       return "#ff7050";
     case "boss":
       return "#ff3060";
+    case "wraith":
+      return "#ff9050";
+    case "sovereign":
+      return "#ff5020";
   }
 }
 
@@ -694,6 +728,42 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
       }
       break;
     }
+    case "wraith": {
+      // Floats freely toward the player on both axes; ignores gravity.
+      e.phase += 0.05;
+      const dx = p.x + p.w / 2 - (e.x + e.w / 2);
+      const dy = p.y + p.h / 2 - (e.y + e.h / 2);
+      const dist = Math.hypot(dx, dy) || 1;
+      const speed = 1.4;
+      e.vx = (dx / dist) * speed;
+      e.vy = (dy / dist) * speed + Math.sin(e.phase) * 0.4;
+      e.facing = dx >= 0 ? 1 : -1;
+      // Soft tile collision (push out without sticking)
+      e.x += e.vx;
+      e.y += e.vy;
+      const minCol = Math.floor(e.x / TILE);
+      const maxCol = Math.floor((e.x + e.w - 0.001) / TILE);
+      const minRow = Math.floor(e.y / TILE);
+      const maxRow = Math.floor((e.y + e.h - 0.001) / TILE);
+      for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+          if (
+            r >= 0 &&
+            r < tiles.length &&
+            c >= 0 &&
+            c < tiles[0].length &&
+            tiles[r][c] === 1
+          ) {
+            if (e.vx > 0) e.x = c * TILE - e.w;
+            else if (e.vx < 0) e.x = (c + 1) * TILE;
+            if (e.vy > 0) e.y = r * TILE - e.h;
+            else if (e.vy < 0) e.y = (r + 1) * TILE;
+          }
+        }
+      }
+      break;
+    }
+    case "sovereign":
     case "boss": {
       e.phase += 0.04;
       e.cooldown--;
@@ -703,11 +773,12 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
       const dx = p.x + p.w / 2 - (e.x + e.w / 2);
       e.facing = dx >= 0 ? 1 : -1;
 
-      // Phase-based behavior
+      const isSovereign = e.kind === "sovereign";
+      // Phase-based behavior — Sovereign is permanently in phase 2
       const hpPct = e.hp / e.maxHp;
-      const phase2 = hpPct < 0.5;
-      const moveSpeed = phase2 ? 3.2 : 1.8;
-      const tg = phase2 ? 16 : 30;
+      const phase2 = isSovereign || hpPct < 0.5;
+      const moveSpeed = isSovereign ? 3.6 : phase2 ? 3.2 : 1.8;
+      const tg = isSovereign ? 14 : phase2 ? 16 : 30;
 
       const pickAttack = () => {
         const r = Math.random();
@@ -734,24 +805,28 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
       } else if (e.state === "aim_charge") {
         e.vx *= 0.8;
         if (e.cooldown <= 0) {
-          // Fast aimed bolt at player position
+          // Fast aimed bolt(s) at player position; sovereign fires triple
           const tx = p.x + p.w / 2;
           const ty = p.y + p.h / 2;
           const ox = e.x + e.w / 2;
           const oy = e.y + e.h / 2;
-          const ang = Math.atan2(ty - oy, tx - ox);
+          const baseAng = Math.atan2(ty - oy, tx - ox);
           const speed = phase2 ? 9 : 7.5;
-          g.projectiles.push({
-            x: ox - 7,
-            y: oy - 7,
-            vx: Math.cos(ang) * speed,
-            vy: Math.sin(ang) * speed,
-            life: 160,
-            w: 14,
-            h: 14,
-            fromPlayer: false,
-            damage: 1,
-          });
+          const offsets = isSovereign ? [-0.18, 0, 0.18] : [0];
+          for (const off of offsets) {
+            const ang = baseAng + off;
+            g.projectiles.push({
+              x: ox - 7,
+              y: oy - 7,
+              vx: Math.cos(ang) * speed,
+              vy: Math.sin(ang) * speed,
+              life: 160,
+              w: 14,
+              h: 14,
+              fromPlayer: false,
+              damage: 1,
+            });
+          }
           e.state = "recover";
           e.cooldown = phase2 ? 22 : 40;
         }
@@ -864,6 +939,20 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
               vx: dir * 2.5,
               vy: 0,
               life: 160,
+              w: 18,
+              h: 18,
+              fromPlayer: false,
+              damage: 1,
+            });
+          }
+          // Sovereign: third extra-fast shockwave pair
+          if (isSovereign) {
+            g.projectiles.push({
+              x: e.x + e.w / 2 - 9,
+              y: e.y + e.h - 18,
+              vx: dir * 7.5,
+              vy: 0,
+              life: 90,
               w: 18,
               h: 18,
               fromPlayer: false,

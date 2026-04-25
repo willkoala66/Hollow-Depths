@@ -2,11 +2,11 @@ export type Vec = { x: number; y: number };
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
-export type AbilityKey = "doubleJump" | "dash" | "blast";
+export type AbilityKey = "doubleJump" | "dash" | "blast" | "pierce";
 
 export type Abilities = Record<AbilityKey, boolean>;
 
-export type EnemyKind = "slime" | "bat" | "turret" | "boss";
+export type EnemyKind = "slime" | "bat" | "turret" | "boss" | "wraith" | "sovereign";
 
 export interface EnemySpawn {
   kind: EnemyKind;
@@ -35,6 +35,7 @@ export interface DoorSpawn {
   toY: number;
   facing: "left" | "right" | "up" | "down";
   requires?: AbilityKey | AbilityKey[];
+  requiresBoss?: boolean;
 }
 
 export interface SaveSpawn {

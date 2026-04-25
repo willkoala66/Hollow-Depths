@@ -85,6 +85,21 @@ export function createEnemy(spawn: EnemySpawn): Enemy {
       base.damage = 1;
       base.cooldown = 90;
       break;
+    case "wraith":
+      base.w = 28;
+      base.h = 26;
+      base.hp = spawn.hp ?? 2;
+      base.maxHp = base.hp;
+      base.damage = 1;
+      break;
+    case "sovereign":
+      base.w = 68;
+      base.h = 68;
+      base.hp = spawn.hp ?? 32;
+      base.maxHp = base.hp;
+      base.damage = 1;
+      base.cooldown = 60;
+      break;
   }
   return base;
 }
@@ -99,4 +114,6 @@ export interface Projectile {
   h: number;
   fromPlayer: boolean;
   damage: number;
+  pierce?: boolean;
+  hitEnemies?: Set<Enemy>;
 }

@@ -77,7 +77,7 @@ function TitleScreen({ onStart }: { onStart: () => void }) {
   return (
     <div className="title-overlay">
       <div className="title-stack">
-        <p className="title-pretitle">A descent through seven chambers</p>
+        <p className="title-pretitle">A descent through ten chambers</p>
         <h1 className="title-name">Hollow Depths</h1>
         <p className="title-subtitle">
           Wake the wraith. Reclaim the throne. Refuse to be still.

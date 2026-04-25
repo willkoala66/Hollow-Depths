@@ -75,7 +75,7 @@ export function createPlayer(spawnRoom: string, x: number, y: number): Player {
     invuln: 0,
     knockback: 0,
     transitionCooldown: 0,
-    abilities: { doubleJump: false, dash: false, blast: true },
+    abilities: { doubleJump: false, dash: false, blast: true, pierce: false },
     collectedPickups: new Set(),
     alive: true,
     deathTimer: 0,
