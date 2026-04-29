@@ -883,7 +883,17 @@ function respawnPlayer(g: GameState) {
   }
   for (const room of Object.values(g.rooms)) {
     for (let i = 0; i < room.enemies.length; i++) {
-      room.enemies[i] = createEnemy(room.def.enemies[i]);
+      const spawn = room.def.enemies[i];
+      // Bosses stay dead once defeated — no second descent into a fresh fight.
+      if (spawn.kind === "boss" && g.bossDefeated) {
+        room.enemies[i] = { ...createEnemy(spawn), alive: false, hp: 0 };
+        continue;
+      }
+      if (spawn.kind === "sovereign" && g.sovereignDefeated) {
+        room.enemies[i] = { ...createEnemy(spawn), alive: false, hp: 0 };
+        continue;
+      }
+      room.enemies[i] = createEnemy(spawn);
     }
   }
 }
