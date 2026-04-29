@@ -90,10 +90,10 @@ function TitleScreen({ onStart }: { onStart: () => void }) {
         </button>
         <div className="title-controls">
           <Control label="Move" keys={["←", "→", "A", "D"]} />
-          <Control label="Jump" keys={["↑", "W", "Z", "K", "Space"]} />
+          <Control label="Jump" keys={["↑", "W", "K", "Space"]} />
           <Control label="Dash" keys={["X", "L", "Shift"]} />
           <Control label="Strike" keys={["C", "J"]} />
-          <Control label="Phantom" keys={["Q", "F"]} />
+          <Control label="Phantom" keys={["Z", "F"]} />
           <Control label="Pause" keys={["Esc", "P"]} />
         </div>
         <p className="title-hint">

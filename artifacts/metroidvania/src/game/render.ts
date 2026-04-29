@@ -44,7 +44,7 @@ const ABILITY_DESC: Record<string, string> = {
   dash: "Press Shift / X to dash forward",
   blast: "Press C / J to fire energy",
   pierce: "Shots punch through enemies & armor",
-  phantom: "Hold Q / F to fade — slip past the Hunter",
+  phantom: "Hold Z / F to fade — slip past the Hunter",
   vessel: "Maximum vitality increased",
   pierceLost: "The Sovereign's death has unbound your shard…",
 };
@@ -217,10 +217,10 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
     ctx.fillStyle = COLORS.textDim;
     const lines = [
       "Move    ←  →   or   A  D",
-      "Jump    Z   K   or   SPACE",
+      "Jump    W   K   or   SPACE",
       "Dash    X   L   or   SHIFT",
       "Shoot   C   J",
-      "Phantom Veil    Q   F   (hold)",
+      "Phantom Veil    Z   F   (hold)",
       "Pause   ESC   P",
     ];
     let y = VIEW_H / 2;

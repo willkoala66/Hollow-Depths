@@ -46,7 +46,6 @@ const KEY_MAP: Record<string, (keyof InputState)[]> = {
   KeyW: ["up", "jump"],
   KeyS: ["down"],
   Space: ["jump"],
-  KeyZ: ["jump"],
   KeyK: ["jump"],
   ShiftLeft: ["dash"],
   ShiftRight: ["dash"],
@@ -58,7 +57,7 @@ const KEY_MAP: Record<string, (keyof InputState)[]> = {
   Enter: ["interact"],
   Escape: ["pause"],
   KeyP: ["pause"],
-  KeyQ: ["phantom"],
+  KeyZ: ["phantom"],
   KeyF: ["phantom"],
 };
 
