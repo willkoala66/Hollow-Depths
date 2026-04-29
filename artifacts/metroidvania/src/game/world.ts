@@ -690,7 +690,6 @@ export const ROOMS: Record<string, RoomDef> = {
         toX: 27 * TILE,
         toY: 14 * TILE,
         facing: "left",
-        requiresBoss: true,
       },
       {
         x: 29 * TILE,
