@@ -407,8 +407,6 @@ export function updateGame(g: GameState, input: InputState) {
           life: 50,
         });
         g.shake = 6;
-      } else if (pk.kind === "heart") {
-        p.hp = Math.min(p.maxHp, p.hp + 1);
       } else if (pk.kind === "vessel") {
         p.maxHp += 1;
         p.hp = p.maxHp;

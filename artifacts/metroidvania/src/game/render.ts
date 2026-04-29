@@ -396,24 +396,9 @@ function drawPickup(
   g.addColorStop(1, "rgba(255,216,58,0)");
   ctx.fillStyle = g;
   ctx.fillRect(cx - 40, cy - 40, 80, 80);
-  ctx.fillStyle =
-    kind === "heart"
-      ? "#ff5a8a"
-      : kind === "vessel"
-        ? "#ff90c0"
-        : COLORS.pickup;
+  ctx.fillStyle = kind === "vessel" ? "#ff90c0" : COLORS.pickup;
   ctx.beginPath();
-  if (kind === "heart") {
-    ctx.arc(cx - 4, cy - 2, 5, 0, Math.PI * 2);
-    ctx.arc(cx + 4, cy - 2, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx - 9, cy);
-    ctx.lineTo(cx + 9, cy);
-    ctx.lineTo(cx, cy + 10);
-    ctx.closePath();
-    ctx.fill();
-  } else if (kind === "vessel") {
+  if (kind === "vessel") {
     // Larger crowned heart with inner sparkle
     ctx.arc(cx - 6, cy - 3, 7, 0, Math.PI * 2);
     ctx.arc(cx + 6, cy - 3, 7, 0, Math.PI * 2);

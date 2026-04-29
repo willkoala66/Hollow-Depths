@@ -287,14 +287,7 @@ export const ROOMS: Record<string, RoomDef> = {
         patrolMax: 26 * TILE,
       },
     ],
-    pickups: [
-      {
-        kind: "heart",
-        x: 14 * TILE,
-        y: 10 * TILE,
-        id: "heart-cistern",
-      },
-    ],
+    pickups: [],
     doors: [
       {
         x: 29 * TILE,
@@ -452,14 +445,7 @@ export const ROOMS: Record<string, RoomDef> = {
         hp: 3,
       },
     ],
-    pickups: [
-      {
-        kind: "heart",
-        x: 15 * TILE - 9,
-        y: 9 * TILE - 9,
-        id: "heart-reach",
-      },
-    ],
+    pickups: [],
     doors: [
       {
         x: 0,
