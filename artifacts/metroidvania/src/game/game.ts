@@ -67,6 +67,7 @@ export interface GameState {
   abilityToast: { ability: string; timer: number } | null;
   collectedAll: Set<string>;
   bossDefeated: boolean;
+  roomBannerTimer: number;
 }
 
 export interface Particle {
@@ -107,6 +108,7 @@ export function createGame(): GameState {
     abilityToast: null,
     collectedAll: new Set(),
     bossDefeated: false,
+    roomBannerTimer: 300,
   };
 }
 
@@ -228,12 +230,14 @@ function performTransition(g: GameState) {
   p.transitionCooldown = 30;
   if (t.facing === "right") p.facing = 1;
   if (t.facing === "left") p.facing = -1;
+  g.roomBannerTimer = 300;
 }
 
 export function updateGame(g: GameState, input: InputState) {
   g.gameTime++;
   if (g.shake > 0) g.shake -= 0.5;
   if (g.shake < 0) g.shake = 0;
+  if (g.roomBannerTimer > 0) g.roomBannerTimer--;
 
   if (input.pausePressed) g.paused = !g.paused;
 

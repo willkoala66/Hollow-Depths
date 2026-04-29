@@ -122,11 +122,10 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
   // HUD (no shake)
   drawHUD(ctx, g);
 
-  // Room name banner on entry
-  if (g.transition && g.transition.phase === "in") {
-    drawRoomBanner(ctx, def.name, 1 - g.transition.progress);
-  } else if (g.gameTime < 180) {
-    drawRoomBanner(ctx, def.name, Math.min(1, (180 - g.gameTime) / 60));
+  // Room name banner on entry — visible for ~5s, fading out over the last second
+  if (g.roomBannerTimer > 0) {
+    const alpha = Math.min(1, g.roomBannerTimer / 60);
+    drawRoomBanner(ctx, def.name, alpha);
   }
 
   // Ability toast
