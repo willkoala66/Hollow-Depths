@@ -23,6 +23,12 @@ export const PROJECTILE_SPEED = 7.5;
 export const PROJECTILE_LIFE = 60;
 export const SHOOT_COOLDOWN = 18;
 
+export const PHANTOM_MAX = 240;
+export const PHANTOM_DRAIN = 1.0;
+export const PHANTOM_RECHARGE = 0.45;
+export const PHANTOM_MOVE_MULT = 0.45;
+export const PHANTOM_MIN_RECHARGE = 60;
+
 export const PLAYER_W = 22;
 export const PLAYER_H = 30;
 export const MAX_HP = 5;
@@ -48,6 +54,14 @@ export const COLORS = {
   enemyBat: "#c050e0",
   enemyTurret: "#ff7050",
   enemyBoss: "#ff3060",
+  sl2Bg: "#04020a",
+  sl2BgDeep: "#01010a",
+  sl2Wall: "#1a0a30",
+  sl2WallEdge: "#3a1a60",
+  sl2WallHi: "#5a3aa0",
+  hunter: "#ff2040",
+  hunterAura: "#ff6080",
+  phantomAura: "#90c0ff",
   hpFull: "#ff5a8a",
   hpEmpty: "#3a1830",
   text: "#e8e4ff",

@@ -213,6 +213,148 @@ const forgeRows = [
   "##############################",
 ];
 
+// ============================================================================
+// SUBLAYER 2 — The Hollow Labyrinth
+// A maze of corrupted halls beneath the cistern, hunted by The Sovereign.
+// ============================================================================
+
+// Top opening (cols 13-16) for return portal back to cistern.
+// Right opening (rows 14-15) to sl2_north.
+// Bottom opening (cols 6-9) drops down to sl2_west.
+const sl2EntryRows = [
+  "#############....#############",
+  "#############....#############",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#......####.........####.....#",
+  "#............................#",
+  "#............................#",
+  "#............####............#",
+  "#............................#",
+  "#............................#",
+  "#..####................####..#",
+  "#............................#",
+  "#............................#",
+  "#............................ ",
+  "#............................ ",
+  "######....####################",
+  "######....####################",
+];
+
+// Left opening to sl2_entry. Right opening to sl2_pierce_shrine.
+// Bottom opening (cols 13-16) to sl2_hub.
+const sl2NorthRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#............................#",
+  "#......####..........####....#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#......####..........####....#",
+  "#............................#",
+  "#............................#",
+  "#............####............#",
+  "#............................#",
+  "#............................#",
+  " ............................ ",
+  " ............................ ",
+  "#############....#############",
+  "#############....#############",
+];
+
+// Left opening to sl2_north. Bottom opening (cols 13-16) to sl2_east.
+// Pierce shrine pickup at the heart of this room.
+const sl2PierceRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#............................#",
+  "#......####..........####....#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#..######............######..#",
+  "#............................#",
+  "#............................#",
+  "#............####............#",
+  "#............................#",
+  "#............................#",
+  " ............................#",
+  " ............................#",
+  "#############....#############",
+  "#############....#############",
+];
+
+// Top opening (cols 6-9) from sl2_entry. Right opening to sl2_hub.
+const sl2WestRows = [
+  "######....####################",
+  "######....####################",
+  "#............................#",
+  "#............................#",
+  "#......####..........####....#",
+  "#............................#",
+  "#............................#",
+  "#............####............#",
+  "#............................#",
+  "#............................#",
+  "#......####..........####....#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................ ",
+  "#............................ ",
+  "##############################",
+  "##############################",
+];
+
+// Top opening (cols 13-16) from sl2_north. Left opening to sl2_west.
+// Right opening to sl2_east. Save shrine here at the labyrinth's heart.
+const sl2HubRows = [
+  "#############....#############",
+  "#############....#############",
+  "#............................#",
+  "#............................#",
+  "#..####.................####.#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#......####..........####....#",
+  "#............................#",
+  "#............................#",
+  "#............####............#",
+  "#............................#",
+  "#............................#",
+  " ............................ ",
+  " ............................ ",
+  "##############################",
+  "##############################",
+];
+
+// Top opening (cols 13-16) from sl2_pierce_shrine. Left opening to sl2_hub.
+const sl2EastRows = [
+  "#############....#############",
+  "#############....#############",
+  "#............................#",
+  "#............................#",
+  "#......####..........####....#",
+  "#............................#",
+  "#............................#",
+  "#............####............#",
+  "#............................#",
+  "#............................#",
+  "#......####..........####....#",
+  "#............................#",
+  "#............####............#",
+  "#............................#",
+  " ............................#",
+  " ............................#",
+  "##############################",
+  "##############################",
+];
+
 const sanctumRows = [
   "##############################",
   "##############################",
@@ -238,6 +380,7 @@ export const ROOMS: Record<string, RoomDef> = {
   antechamber: {
     id: "antechamber",
     name: "Antechamber",
+    sublayer: 1,
     tiles: parseTiles(antechamberRows),
     enemies: [],
     pickups: [
@@ -277,6 +420,7 @@ export const ROOMS: Record<string, RoomDef> = {
   cistern: {
     id: "cistern",
     name: "The Still Cistern",
+    sublayer: 1,
     tiles: parseTiles(cisternRows),
     enemies: [
       {
@@ -299,11 +443,25 @@ export const ROOMS: Record<string, RoomDef> = {
         toY: 14 * TILE,
         facing: "right",
       },
+      // Abyssal portal — opens after the Sovereign falls.
+      // Drop straight down into Sublayer 2.
+      {
+        x: 5 * TILE,
+        y: 15 * TILE,
+        w: TILE * 4,
+        h: TILE * 3,
+        toRoom: "sl2_entry",
+        toX: 14 * TILE,
+        toY: 4 * TILE,
+        facing: "down",
+        requiresSovereign: true,
+      },
     ],
   },
   tunnel: {
     id: "tunnel",
     name: "Cracked Tunnel",
+    sublayer: 1,
     tiles: parseTiles(tunnelRows),
     enemies: [
       {
@@ -361,6 +519,7 @@ export const ROOMS: Record<string, RoomDef> = {
   abyss: {
     id: "abyss",
     name: "The Abyss",
+    sublayer: 1,
     tiles: parseTiles(abyssRows),
     enemies: [
       {
@@ -422,6 +581,7 @@ export const ROOMS: Record<string, RoomDef> = {
   reach: {
     id: "reach",
     name: "Wraith's Reach",
+    sublayer: 1,
     tiles: parseTiles(reachRows),
     enemies: [
       {
@@ -473,6 +633,7 @@ export const ROOMS: Record<string, RoomDef> = {
   vault: {
     id: "vault",
     name: "Sunken Vault",
+    sublayer: 1,
     tiles: parseTiles(vaultRows),
     enemies: [
       {
@@ -508,6 +669,7 @@ export const ROOMS: Record<string, RoomDef> = {
   boss_lair: {
     id: "boss_lair",
     name: "Hollow's Throne",
+    sublayer: 1,
     tiles: parseTiles(bossLairRows),
     enemies: [
       {
@@ -545,6 +707,7 @@ export const ROOMS: Record<string, RoomDef> = {
   rift: {
     id: "rift",
     name: "Cinder Rift",
+    sublayer: 1,
     tiles: parseTiles(riftRows),
     enemies: [
       {
@@ -589,6 +752,7 @@ export const ROOMS: Record<string, RoomDef> = {
   forge: {
     id: "forge",
     name: "Ember Forge",
+    sublayer: 1,
     tiles: parseTiles(forgeRows),
     enemies: [
       {
@@ -648,6 +812,7 @@ export const ROOMS: Record<string, RoomDef> = {
   sanctum: {
     id: "sanctum",
     name: "Sovereign's Sanctum",
+    sublayer: 1,
     tiles: parseTiles(sanctumRows),
     enemies: [
       {
@@ -671,6 +836,262 @@ export const ROOMS: Record<string, RoomDef> = {
       },
     ],
   },
+  // ================== SUBLAYER 2 ==================
+  sl2_entry: {
+    id: "sl2_entry",
+    name: "Hollow Threshold",
+    sublayer: 2,
+    tiles: parseTiles(sl2EntryRows),
+    enemies: [],
+    pickups: [
+      // Phantom Veil — central platform at row 8 (cols 12-15)
+      {
+        kind: "ability",
+        ability: "phantom",
+        x: 14 * TILE,
+        y: 7 * TILE - 2,
+        id: "phantom-sl2",
+      },
+    ],
+    doors: [
+      // Return portal up to cistern (top opening, cols 13-16)
+      {
+        x: 13 * TILE,
+        y: 0,
+        w: TILE * 4,
+        h: TILE * 2,
+        toRoom: "cistern",
+        toX: 6 * TILE,
+        toY: 13 * TILE,
+        facing: "up",
+      },
+      // Right corridor to sl2_north
+      {
+        x: 29 * TILE,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl2_north",
+        toX: 2 * TILE,
+        toY: 13 * TILE,
+        facing: "right",
+      },
+      // Drop down to sl2_west (bottom opening, cols 6-9)
+      {
+        x: 6 * TILE,
+        y: 15 * TILE,
+        w: TILE * 4,
+        h: TILE * 3,
+        toRoom: "sl2_west",
+        toX: 7 * TILE,
+        toY: 3 * TILE,
+        facing: "down",
+      },
+    ],
+    saves: [{ x: 22 * TILE, y: 13 * TILE }],
+  },
+  sl2_north: {
+    id: "sl2_north",
+    name: "Whispering Halls",
+    sublayer: 2,
+    tiles: parseTiles(sl2NorthRows),
+    enemies: [],
+    pickups: [],
+    doors: [
+      // Left back to sl2_entry
+      {
+        x: 0,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl2_entry",
+        toX: 27 * TILE,
+        toY: 13 * TILE,
+        facing: "left",
+      },
+      // Right to pierce shrine
+      {
+        x: 29 * TILE,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl2_pierce_shrine",
+        toX: 2 * TILE,
+        toY: 13 * TILE,
+        facing: "right",
+      },
+      // Drop down to hub (bottom opening, cols 13-16)
+      {
+        x: 13 * TILE,
+        y: 15 * TILE,
+        w: TILE * 4,
+        h: TILE * 3,
+        toRoom: "sl2_hub",
+        toX: 14 * TILE,
+        toY: 3 * TILE,
+        facing: "down",
+      },
+    ],
+  },
+  sl2_pierce_shrine: {
+    id: "sl2_pierce_shrine",
+    name: "Shard Sanctum",
+    sublayer: 2,
+    tiles: parseTiles(sl2PierceRows),
+    enemies: [],
+    pickups: [
+      // Recovered Pierce Shard — central platform at row 11 (cols 12-15)
+      {
+        kind: "ability",
+        ability: "pierce",
+        x: 14 * TILE,
+        y: 10 * TILE - 2,
+        id: "pierce-sl2",
+      },
+    ],
+    doors: [
+      // Left back to sl2_north
+      {
+        x: 0,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl2_north",
+        toX: 27 * TILE,
+        toY: 13 * TILE,
+        facing: "left",
+      },
+      // Drop down to sl2_east (cols 13-16)
+      {
+        x: 13 * TILE,
+        y: 15 * TILE,
+        w: TILE * 4,
+        h: TILE * 3,
+        toRoom: "sl2_east",
+        toX: 14 * TILE,
+        toY: 3 * TILE,
+        facing: "down",
+      },
+    ],
+  },
+  sl2_west: {
+    id: "sl2_west",
+    name: "Veiled Drift",
+    sublayer: 2,
+    tiles: parseTiles(sl2WestRows),
+    enemies: [],
+    pickups: [],
+    doors: [
+      // Up portal back to sl2_entry (top opening, cols 6-9)
+      {
+        x: 6 * TILE,
+        y: 0,
+        w: TILE * 4,
+        h: TILE * 2,
+        toRoom: "sl2_entry",
+        toX: 7 * TILE,
+        toY: 13 * TILE,
+        facing: "up",
+      },
+      // Right to hub
+      {
+        x: 29 * TILE,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl2_hub",
+        toX: 2 * TILE,
+        toY: 13 * TILE,
+        facing: "right",
+      },
+    ],
+  },
+  sl2_hub: {
+    id: "sl2_hub",
+    name: "Heart of the Labyrinth",
+    sublayer: 2,
+    tiles: parseTiles(sl2HubRows),
+    enemies: [],
+    pickups: [],
+    doors: [
+      // Up to sl2_north (top opening, cols 13-16)
+      {
+        x: 13 * TILE,
+        y: 0,
+        w: TILE * 4,
+        h: TILE * 2,
+        toRoom: "sl2_north",
+        toX: 14 * TILE,
+        toY: 13 * TILE,
+        facing: "up",
+      },
+      // Left to sl2_west
+      {
+        x: 0,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl2_west",
+        toX: 27 * TILE,
+        toY: 13 * TILE,
+        facing: "left",
+      },
+      // Right to sl2_east
+      {
+        x: 29 * TILE,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl2_east",
+        toX: 2 * TILE,
+        toY: 13 * TILE,
+        facing: "right",
+      },
+    ],
+    saves: [{ x: 14 * TILE, y: 13 * TILE }],
+  },
+  sl2_east: {
+    id: "sl2_east",
+    name: "Echoing Conduit",
+    sublayer: 2,
+    tiles: parseTiles(sl2EastRows),
+    enemies: [],
+    pickups: [],
+    doors: [
+      // Up to pierce shrine (top opening, cols 13-16)
+      {
+        x: 13 * TILE,
+        y: 0,
+        w: TILE * 4,
+        h: TILE * 2,
+        toRoom: "sl2_pierce_shrine",
+        toX: 14 * TILE,
+        toY: 13 * TILE,
+        facing: "up",
+      },
+      // Left to hub
+      {
+        x: 0,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl2_hub",
+        toX: 27 * TILE,
+        toY: 13 * TILE,
+        facing: "left",
+      },
+    ],
+  },
+};
+
+// Adjacency map for the Sovereign hunter to BFS-pathfind through Sublayer 2.
+export const SL2_ADJ: Record<string, string[]> = {
+  sl2_entry: ["sl2_north", "sl2_west"],
+  sl2_north: ["sl2_entry", "sl2_pierce_shrine", "sl2_hub"],
+  sl2_pierce_shrine: ["sl2_north", "sl2_east"],
+  sl2_west: ["sl2_entry", "sl2_hub"],
+  sl2_hub: ["sl2_north", "sl2_west", "sl2_east"],
+  sl2_east: ["sl2_pierce_shrine", "sl2_hub"],
 };
 
 export const STARTING_ROOM = "antechamber";

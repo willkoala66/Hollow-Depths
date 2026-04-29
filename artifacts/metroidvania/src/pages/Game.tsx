@@ -77,10 +77,13 @@ function TitleScreen({ onStart }: { onStart: () => void }) {
   return (
     <div className="title-overlay">
       <div className="title-stack">
-        <p className="title-pretitle">A descent through ten chambers</p>
+        <p className="title-pretitle">A descent through two sublayers</p>
         <h1 className="title-name">Hollow Depths</h1>
         <p className="title-subtitle">
-          Wake the wraith. Reclaim the throne. Refuse to be still.
+          Sublayer 1: ten chambers, a sleeping throne.
+        </p>
+        <p className="title-subtitle" style={{ opacity: 0.65, marginTop: -8 }}>
+          Sublayer 2: the wraith you woke is hunting you.
         </p>
         <button onClick={onStart} className="title-start">
           BEGIN THE DESCENT
@@ -90,6 +93,7 @@ function TitleScreen({ onStart }: { onStart: () => void }) {
           <Control label="Jump" keys={["↑", "W", "Z", "K", "Space"]} />
           <Control label="Dash" keys={["X", "L", "Shift"]} />
           <Control label="Strike" keys={["C", "J"]} />
+          <Control label="Phantom" keys={["Q", "F"]} />
           <Control label="Pause" keys={["Esc", "P"]} />
         </div>
         <p className="title-hint">

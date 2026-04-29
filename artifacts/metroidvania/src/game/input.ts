@@ -13,6 +13,7 @@ export interface InputState {
   interactPressed: boolean;
   pause: boolean;
   pausePressed: boolean;
+  phantom: boolean;
 }
 
 export function createInputState(): InputState {
@@ -31,6 +32,7 @@ export function createInputState(): InputState {
     interactPressed: false,
     pause: false,
     pausePressed: false,
+    phantom: false,
   };
 }
 
@@ -56,6 +58,8 @@ const KEY_MAP: Record<string, (keyof InputState)[]> = {
   Enter: ["interact"],
   Escape: ["pause"],
   KeyP: ["pause"],
+  KeyQ: ["phantom"],
+  KeyF: ["phantom"],
 };
 
 export function attachInput(state: InputState): () => void {
@@ -115,6 +119,7 @@ export function attachInput(state: InputState): () => void {
     state.shoot = false;
     state.interact = false;
     state.pause = false;
+    state.phantom = false;
   };
 
   window.addEventListener("keydown", onDown);

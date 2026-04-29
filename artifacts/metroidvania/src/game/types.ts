@@ -2,7 +2,12 @@ export type Vec = { x: number; y: number };
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
-export type AbilityKey = "doubleJump" | "dash" | "blast" | "pierce";
+export type AbilityKey =
+  | "doubleJump"
+  | "dash"
+  | "blast"
+  | "pierce"
+  | "phantom";
 
 export type Abilities = Record<AbilityKey, boolean>;
 
@@ -36,6 +41,7 @@ export interface DoorSpawn {
   facing: "left" | "right" | "up" | "down";
   requires?: AbilityKey | AbilityKey[];
   requiresBoss?: boolean;
+  requiresSovereign?: boolean;
 }
 
 export interface SaveSpawn {
@@ -52,6 +58,7 @@ export interface RoomDef {
   pickups: PickupSpawn[];
   doors: DoorSpawn[];
   saves?: SaveSpawn[];
+  sublayer?: 1 | 2;
 }
 
 export type Tile = 0 | 1 | 2;

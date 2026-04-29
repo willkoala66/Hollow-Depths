@@ -1,19 +1,33 @@
-import { COLORS, ROOM_H, ROOM_W, TILE, VIEW_H, VIEW_W } from "./constants";
+import { COLORS, PHANTOM_MAX, ROOM_H, ROOM_W, TILE, VIEW_H, VIEW_W } from "./constants";
 import type { Enemy } from "./enemies";
-import { currentRoom, type GameState } from "./game";
+import { currentRoom, type GameState, type Hunter } from "./game";
 import type { Player } from "./player";
 
-const MAP_LAYOUT: Record<string, { gx: number; gy: number }> = {
-  cistern: { gx: 0, gy: 0 },
-  antechamber: { gx: 1, gy: 0 },
-  tunnel: { gx: 2, gy: 0 },
-  boss_lair: { gx: 3, gy: 0 },
-  rift: { gx: 4, gy: 0 },
-  forge: { gx: 5, gy: 0 },
-  sanctum: { gx: 6, gy: 0 },
-  abyss: { gx: 2, gy: 1 },
-  reach: { gx: 3, gy: 1 },
-  vault: { gx: 3, gy: 2 },
+interface MapCell {
+  gx: number;
+  gy: number;
+  sublayer: 1 | 2;
+}
+
+const MAP_LAYOUT: Record<string, MapCell> = {
+  // Sublayer 1 — Hollow Depths
+  cistern: { gx: 0, gy: 0, sublayer: 1 },
+  antechamber: { gx: 1, gy: 0, sublayer: 1 },
+  tunnel: { gx: 2, gy: 0, sublayer: 1 },
+  boss_lair: { gx: 3, gy: 0, sublayer: 1 },
+  rift: { gx: 4, gy: 0, sublayer: 1 },
+  forge: { gx: 5, gy: 0, sublayer: 1 },
+  sanctum: { gx: 6, gy: 0, sublayer: 1 },
+  abyss: { gx: 2, gy: 1, sublayer: 1 },
+  reach: { gx: 3, gy: 1, sublayer: 1 },
+  vault: { gx: 3, gy: 2, sublayer: 1 },
+  // Sublayer 2 — The Hollow Labyrinth
+  sl2_entry: { gx: 0, gy: 0, sublayer: 2 },
+  sl2_north: { gx: 1, gy: 0, sublayer: 2 },
+  sl2_pierce_shrine: { gx: 2, gy: 0, sublayer: 2 },
+  sl2_west: { gx: 0, gy: 1, sublayer: 2 },
+  sl2_hub: { gx: 1, gy: 1, sublayer: 2 },
+  sl2_east: { gx: 2, gy: 1, sublayer: 2 },
 };
 
 const ABILITY_NAMES: Record<string, string> = {
@@ -21,14 +35,23 @@ const ABILITY_NAMES: Record<string, string> = {
   dash: "Phase Dash",
   blast: "Soul Shard",
   pierce: "Pierce Shard",
+  phantom: "Phantom Veil",
   vessel: "Heart Vessel",
+  pierceLost: "Pierce Shard Fades",
 };
 const ABILITY_DESC: Record<string, string> = {
   doubleJump: "Press jump again in the air",
   dash: "Press Shift / X to dash forward",
   blast: "Press C / J to fire energy",
   pierce: "Shots punch through enemies & armor",
+  phantom: "Hold Q / F to fade — slip past the Hunter",
   vessel: "Maximum vitality increased",
+  pierceLost: "The Sovereign's death has unbound your shard…",
+};
+
+const SUBLAYER_TITLES: Record<1 | 2, { name: string; subtitle: string }> = {
+  1: { name: "SUBLAYER 1", subtitle: "Hollow Depths" },
+  2: { name: "SUBLAYER 2", subtitle: "The Hollow Labyrinth" },
 };
 
 export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
@@ -53,10 +76,11 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
   drawBackground(ctx, g);
 
   // Tiles
+  const sublayer = (def.sublayer ?? 1) as 1 | 2;
   for (let y = 0; y < ROOM_H; y++) {
     for (let x = 0; x < ROOM_W; x++) {
       const t = def.tiles[y][x];
-      if (t === 1) drawWallTile(ctx, x, y, def.tiles);
+      if (t === 1) drawWallTile(ctx, x, y, def.tiles, sublayer);
       else if (t === 2) drawSpike(ctx, x, y);
     }
   }
@@ -82,6 +106,11 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
   for (const e of room.enemies) {
     if (!e.alive) continue;
     drawEnemy(ctx, e, g.gameTime);
+  }
+
+  // Hunter (Sublayer 2 wraith) — only if it's in this room
+  if (g.hunter && g.hunter.roomId === g.currentRoomId) {
+    drawHunter(ctx, g.hunter, g.gameTime, g.hunterAppearTimer);
   }
 
   // Projectiles
@@ -122,6 +151,13 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
   // HUD (no shake)
   drawHUD(ctx, g);
 
+  // Sublayer banner — large, shown briefly when sublayer changes (or game start)
+  if (g.sublayerBannerTimer > 0) {
+    const alpha = Math.min(1, g.sublayerBannerTimer / 60);
+    const info = SUBLAYER_TITLES[g.lastSublayer];
+    drawSublayerBanner(ctx, info.name, info.subtitle, alpha);
+  }
+
   // Room name banner on entry — visible for ~5s, fading out over the last second
   if (g.roomBannerTimer > 0) {
     const alpha = Math.min(1, g.roomBannerTimer / 60);
@@ -132,12 +168,14 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
   if (g.abilityToast) {
     const a = g.abilityToast;
     const t = a.timer;
-    const alpha = t > 150 ? (180 - t) / 30 : t < 30 ? t / 30 : 1;
+    const alpha = t > 230 ? (260 - t) / 30 : t < 30 ? t / 30 : 1;
+    const lost = a.ability === "pierceLost";
     drawAbilityToast(
       ctx,
       ABILITY_NAMES[a.ability] ?? a.ability,
       ABILITY_DESC[a.ability] ?? "",
       alpha,
+      lost,
     );
   }
 
@@ -182,6 +220,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
       "Jump    Z   K   or   SPACE",
       "Dash    X   L   or   SHIFT",
       "Shoot   C   J",
+      "Phantom Veil    Q   F   (hold)",
       "Pause   ESC   P",
     ];
     let y = VIEW_H / 2;
@@ -218,15 +257,22 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D, g: GameState) {
+  const sl = currentRoom(g).def.sublayer ?? 1;
   const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-  grad.addColorStop(0, "#0e0820");
-  grad.addColorStop(0.6, "#08040f");
-  grad.addColorStop(1, "#03010a");
+  if (sl === 2) {
+    grad.addColorStop(0, "#0a0518");
+    grad.addColorStop(0.5, "#04020c");
+    grad.addColorStop(1, "#020108");
+  } else {
+    grad.addColorStop(0, "#0e0820");
+    grad.addColorStop(0.6, "#08040f");
+    grad.addColorStop(1, "#03010a");
+  }
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
   // Distant pillars (parallax-ish, static per room)
-  ctx.fillStyle = "rgba(40, 22, 70, 0.55)";
+  ctx.fillStyle = sl === 2 ? "rgba(70, 30, 100, 0.55)" : "rgba(40, 22, 70, 0.55)";
   const seed = hash(g.currentRoomId);
   for (let i = 0; i < 6; i++) {
     const x = ((seed * (i + 1) * 73) % (VIEW_W - 80)) + 20;
@@ -235,12 +281,18 @@ function drawBackground(ctx: CanvasRenderingContext2D, g: GameState) {
     ctx.fillRect(x, VIEW_H - h, w, h);
   }
   // Floating motes
-  ctx.fillStyle = "rgba(160, 112, 255, 0.18)";
+  ctx.fillStyle = sl === 2 ? "rgba(255, 80, 120, 0.16)" : "rgba(160, 112, 255, 0.18)";
   for (let i = 0; i < 30; i++) {
     const t = g.gameTime * 0.4 + i * 30;
     const x = ((seed * 17 + i * 53) % VIEW_W);
     const y = ((t * 0.3 + seed * 7) % VIEW_H);
     ctx.fillRect(x, y, 2, 2);
+  }
+  // Distant menacing pulse in Sublayer 2 — the Sovereign's heartbeat
+  if (sl === 2) {
+    const pulse = 0.05 + Math.sin(g.gameTime * 0.04) * 0.04;
+    ctx.fillStyle = `rgba(180, 40, 60, ${pulse})`;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   }
 }
 
@@ -255,33 +307,37 @@ function drawWallTile(
   cx: number,
   cy: number,
   tiles: number[][],
+  sublayer: 1 | 2 = 1,
 ) {
   const x = cx * TILE;
   const y = cy * TILE;
-  ctx.fillStyle = COLORS.wall;
+  const wall = sublayer === 2 ? COLORS.sl2Wall : COLORS.wall;
+  const edge = sublayer === 2 ? COLORS.sl2WallEdge : COLORS.wallEdge;
+  const hi = sublayer === 2 ? COLORS.sl2WallHi : COLORS.wallHighlight;
+  ctx.fillStyle = wall;
   ctx.fillRect(x, y, TILE, TILE);
 
   // Top edge highlight if open above
   const above = cy > 0 ? tiles[cy - 1][cx] : 1;
   if (above !== 1) {
-    ctx.fillStyle = COLORS.wallHighlight;
+    ctx.fillStyle = hi;
     ctx.fillRect(x, y, TILE, 4);
-    ctx.fillStyle = COLORS.wallEdge;
+    ctx.fillStyle = edge;
     ctx.fillRect(x, y + 4, TILE, 2);
   }
   // Side edges
   const left = cx > 0 ? tiles[cy][cx - 1] : 1;
   const right = cx < tiles[0].length - 1 ? tiles[cy][cx + 1] : 1;
   if (left !== 1) {
-    ctx.fillStyle = COLORS.wallEdge;
+    ctx.fillStyle = edge;
     ctx.fillRect(x, y, 2, TILE);
   }
   if (right !== 1) {
-    ctx.fillStyle = COLORS.wallEdge;
+    ctx.fillStyle = edge;
     ctx.fillRect(x + TILE - 2, y, 2, TILE);
   }
   // Brick texture
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.fillStyle = sublayer === 2 ? "rgba(0,0,0,0.32)" : "rgba(0,0,0,0.18)";
   ctx.fillRect(x + 6, y + 10, 8, 2);
   ctx.fillRect(x + 18, y + 22, 6, 2);
 }
@@ -313,6 +369,7 @@ function drawDoor(
     facing: string;
     requires?: string | string[];
     requiresBoss?: boolean;
+    requiresSovereign?: boolean;
   },
   g: GameState,
 ) {
@@ -321,8 +378,13 @@ function drawDoor(
   const reqs = d.requires ? (Array.isArray(d.requires) ? d.requires : [d.requires]) : [];
   const lockedAbility = reqs.some((r) => !g.player.abilities[r as never]);
   const lockedBoss = !!d.requiresBoss && !g.bossDefeated;
-  const locked = lockedAbility || lockedBoss;
-  const color = locked ? COLORS.doorLocked : COLORS.door;
+  const lockedSov = !!d.requiresSovereign && !g.sovereignDefeated;
+  const locked = lockedAbility || lockedBoss || lockedSov;
+  const color = locked
+    ? lockedSov
+      ? "#1a0408"
+      : COLORS.doorLocked
+    : COLORS.door;
   ctx.fillStyle = color;
   ctx.globalAlpha = pulse * (locked ? 0.5 : 0.9);
   if (d.facing === "right" || d.facing === "left") {
@@ -333,8 +395,21 @@ function drawDoor(
     ctx.fillRect(d.x, d.y, d.w, d.h);
   } else if (d.facing === "down") {
     ctx.fillRect(d.x, d.y + d.h - 4, d.w, 4);
-    ctx.fillStyle = "rgba(58,160,200,0.18)";
-    ctx.fillRect(d.x, d.y - 12, d.w, 12);
+    // Sovereign-locked drop portals get a swirling crimson maw once unlocked.
+    if (d.requiresSovereign && g.sovereignDefeated) {
+      const cx = d.x + d.w / 2;
+      const cy = d.y + d.h / 2;
+      const r = Math.min(d.w, d.h) * 0.55;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      grad.addColorStop(0, `rgba(255, 60, 40, ${0.55 + Math.sin(t * 2) * 0.15})`);
+      grad.addColorStop(0.5, "rgba(120, 20, 30, 0.5)");
+      grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(d.x - 8, d.y - 8, d.w + 16, d.h + 16);
+    } else {
+      ctx.fillStyle = "rgba(58,160,200,0.18)";
+      ctx.fillRect(d.x, d.y - 12, d.w, 12);
+    }
   } else if (d.facing === "up") {
     ctx.fillRect(d.x, d.y, d.w, 4);
     ctx.fillStyle = "rgba(58,160,200,0.18)";
@@ -342,13 +417,16 @@ function drawDoor(
   }
   ctx.globalAlpha = 1;
   if (locked) {
-    ctx.fillStyle = lockedBoss
-      ? "rgba(255,80,40,0.9)"
-      : "rgba(255,200,100,0.85)";
+    ctx.fillStyle = lockedSov
+      ? "rgba(255,40,60,0.95)"
+      : lockedBoss
+        ? "rgba(255,80,40,0.9)"
+        : "rgba(255,200,100,0.85)";
     ctx.font = "10px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(lockedBoss ? "✦" : "◆", d.x + d.w / 2, d.y + d.h / 2);
+    const symbol = lockedSov ? "✶" : lockedBoss ? "✦" : "◆";
+    ctx.fillText(symbol, d.x + d.w / 2, d.y + d.h / 2);
   }
 }
 
@@ -431,7 +509,20 @@ function drawPickup(
 
 function drawPlayer(ctx: CanvasRenderingContext2D, p: Player, time: number) {
   const flash = p.invuln > 0 && Math.floor(time / 4) % 2 === 0;
-  if (flash) {
+  // Phantom Veil aura — soft blue halo behind the player
+  if (p.phantomActive) {
+    const cx = p.x + p.w / 2;
+    const cy = p.y + p.h / 2;
+    const r = 28 + Math.sin(time * 0.18) * 4;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, "rgba(144,192,255,0.55)");
+    grad.addColorStop(1, "rgba(144,192,255,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  }
+  if (p.phantomActive) {
+    ctx.globalAlpha = 0.35;
+  } else if (flash) {
     ctx.globalAlpha = 0.45;
   }
   // Trail when dashing
@@ -725,9 +816,61 @@ function drawHUD(ctx: CanvasRenderingContext2D, g: GameState) {
   drawAbilityIcon(ctx, ax + 38, ay, "dash", p.abilities.dash);
   drawAbilityIcon(ctx, ax + 76, ay, "blast", p.abilities.blast);
   drawAbilityIcon(ctx, ax + 114, ay, "pierce", p.abilities.pierce);
+  drawAbilityIcon(ctx, ax + 152, ay, "phantom", p.abilities.phantom);
+
+  // Phantom meter (under the ability row, only once unlocked)
+  if (p.abilities.phantom) {
+    const mx = ax;
+    const my = ay + 36;
+    const mw = 182;
+    const mh = 6;
+    ctx.fillStyle = "rgba(8,2,18,0.7)";
+    ctx.fillRect(mx - 1, my - 1, mw + 2, mh + 2);
+    ctx.fillStyle = "rgba(40,30,60,0.6)";
+    ctx.fillRect(mx, my, mw, mh);
+    const pct = p.phantomMeter / PHANTOM_MAX;
+    const grad = ctx.createLinearGradient(mx, my, mx + mw, my);
+    if (p.phantomCooldown > 0) {
+      grad.addColorStop(0, "#5a3a80");
+      grad.addColorStop(1, "#7a5aa0");
+    } else {
+      grad.addColorStop(0, "#90c0ff");
+      grad.addColorStop(1, "#c0e0ff");
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(mx, my, mw * pct, mh);
+    if (p.phantomActive) {
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.fillRect(mx + mw * pct - 2, my, 2, mh);
+    }
+  }
 
   // Mini-map (top-right)
   drawMinimap(ctx, g);
+
+  // Hunter HP bar — visible only when in the same room
+  if (g.hunter && g.hunter.roomId === g.currentRoomId) {
+    const h = g.hunter;
+    const w = 360;
+    const bh = 14;
+    const x = (VIEW_W - w) / 2;
+    const y = VIEW_H - 36;
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.fillRect(x - 2, y - 2, w + 4, bh + 4);
+    ctx.fillStyle = "#1a0408";
+    ctx.fillRect(x, y, w, bh);
+    const pct = Math.max(0, h.hp / h.maxHp);
+    const grad = ctx.createLinearGradient(x, y, x + w, y);
+    grad.addColorStop(0, "#ff2040");
+    grad.addColorStop(1, "#ff6080");
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, w * pct, bh);
+    ctx.fillStyle = COLORS.text;
+    ctx.font = "bold 11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("THE SOVEREIGN'S WRAITH", VIEW_W / 2, y - 12);
+  }
 
   // Boss HP bar
   const room = currentRoom(g);
@@ -820,9 +963,13 @@ function drawAbilityIcon(
         ? "»"
         : ability === "pierce"
           ? "→✦"
-          : "✦";
+          : ability === "phantom"
+            ? "◌"
+            : "✦";
   if (ability === "pierce" && unlocked) {
     ctx.fillStyle = "#ffd060";
+  } else if (ability === "phantom" && unlocked) {
+    ctx.fillStyle = "#90c0ff";
   }
   ctx.fillText(label, x + 15, y + 16);
 }
@@ -831,28 +978,47 @@ function drawMinimap(ctx: CanvasRenderingContext2D, g: GameState) {
   const cell = 26;
   const gap = 4;
   const padding = 8;
-  const maxGx = Math.max(...Object.values(MAP_LAYOUT).map((m) => m.gx));
-  const maxGy = Math.max(...Object.values(MAP_LAYOUT).map((m) => m.gy));
+  const sl = g.lastSublayer;
+  const visibleEntries = Object.entries(MAP_LAYOUT).filter(
+    ([, pos]) => pos.sublayer === sl,
+  );
+  const maxGx = Math.max(...visibleEntries.map(([, m]) => m.gx));
+  const maxGy = Math.max(...visibleEntries.map(([, m]) => m.gy));
   const w = (maxGx + 1) * (cell + gap) - gap + padding * 2;
-  const h = (maxGy + 1) * (cell + gap) - gap + padding * 2;
+  const labelH = 14;
+  const h = (maxGy + 1) * (cell + gap) - gap + padding * 2 + labelH;
   const x = VIEW_W - w - 16;
   const y = 16;
   ctx.fillStyle = "rgba(8,2,18,0.7)";
   ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = "rgba(160,112,255,0.5)";
+  ctx.strokeStyle = sl === 2 ? "rgba(255,80,120,0.55)" : "rgba(160,112,255,0.5)";
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-  for (const [id, pos] of Object.entries(MAP_LAYOUT)) {
+  // Sublayer label
+  ctx.fillStyle = sl === 2 ? "#ff80a0" : "#a070ff";
+  ctx.font = "bold 9px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(`SUBLAYER ${sl}`, x + w / 2, y + 3);
+  // Hunter indicator on minimap (only meaningful in sl2)
+  for (const [id, pos] of visibleEntries) {
     const cx = x + padding + pos.gx * (cell + gap);
-    const cy = y + padding + pos.gy * (cell + gap);
+    const cy = y + padding + labelH + pos.gy * (cell + gap);
     const visited = g.rooms[id]?.def != null;
     const current = id === g.currentRoomId;
+    const hunterHere = g.hunter && g.hunter.roomId === id;
     ctx.fillStyle = current
-      ? "#a070ff"
+      ? sl === 2
+        ? "#ff80a0"
+        : "#a070ff"
       : visited
         ? "rgba(82,48,120,0.7)"
         : "rgba(40,30,60,0.4)";
     ctx.fillRect(cx, cy, cell, cell);
+    if (hunterHere) {
+      ctx.fillStyle = "rgba(255,40,60,0.85)";
+      ctx.fillRect(cx + cell - 8, cy + 2, 6, 6);
+    }
     if (current) {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(cx + cell / 2 - 2, cy + cell / 2 - 2, 4, 4);
@@ -882,23 +1048,24 @@ function drawAbilityToast(
   name: string,
   desc: string,
   alpha: number,
+  lost = false,
 ) {
   ctx.save();
   ctx.globalAlpha = alpha;
-  const w = 380;
+  const w = 420;
   const h = 70;
   const x = (VIEW_W - w) / 2;
   const y = VIEW_H * 0.34;
-  ctx.fillStyle = "rgba(20,10,40,0.92)";
+  ctx.fillStyle = lost ? "rgba(40,8,12,0.94)" : "rgba(20,10,40,0.92)";
   ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = "#ffd83a";
+  ctx.strokeStyle = lost ? "#ff4060" : "#ffd83a";
   ctx.lineWidth = 2;
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-  ctx.fillStyle = "#ffd83a";
+  ctx.fillStyle = lost ? "#ff4060" : "#ffd83a";
   ctx.font = "bold 11px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillText("ABILITY ACQUIRED", x + w / 2, y + 10);
+  ctx.fillText(lost ? "ABILITY LOST" : "ABILITY ACQUIRED", x + w / 2, y + 10);
   ctx.fillStyle = COLORS.text;
   ctx.font = "italic 22px serif";
   ctx.fillText(name, x + w / 2, y + 24);
@@ -906,4 +1073,101 @@ function drawAbilityToast(
   ctx.font = "12px sans-serif";
   ctx.fillText(desc, x + w / 2, y + 50);
   ctx.restore();
+}
+
+function drawSublayerBanner(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  subtitle: string,
+  alpha: number,
+) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // Wide horizontal band lower than the room banner, with subtle vignette
+  const bandY = VIEW_H * 0.78;
+  ctx.fillStyle = "rgba(4,2,10,0.55)";
+  ctx.fillRect(0, bandY - 28, VIEW_W, 64);
+  ctx.fillStyle = "#a070ff";
+  ctx.font = "bold 10px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(name, VIEW_W / 2, bandY - 8);
+  ctx.fillStyle = COLORS.text;
+  ctx.font = "italic 24px serif";
+  ctx.fillText(subtitle, VIEW_W / 2, bandY + 16);
+  ctx.restore();
+}
+
+// The Sovereign's wraith — gaunt, predatory, and sketched in fluid ember-and-shadow.
+function drawHunter(
+  ctx: CanvasRenderingContext2D,
+  h: Hunter,
+  time: number,
+  appearTimer: number,
+) {
+  const flash = h.hitFlash > 0;
+  const cx = h.x + h.w / 2;
+  const cy = h.y + h.h / 2;
+
+  // Phasing-in alpha while spawning
+  const baseAlpha = appearTimer > 0 ? 0.25 + (180 - appearTimer) / 180 * 0.75 : 1;
+  ctx.save();
+  ctx.globalAlpha = baseAlpha;
+
+  // Outer aura — pulses with menace
+  const auraR = 36 + Math.sin(time * 0.1) * 4;
+  const aura = ctx.createRadialGradient(cx, cy, 0, cx, cy, auraR);
+  aura.addColorStop(0, `rgba(255, 64, 80, 0.55)`);
+  aura.addColorStop(1, `rgba(255, 64, 80, 0)`);
+  ctx.fillStyle = aura;
+  ctx.fillRect(cx - auraR, cy - auraR, auraR * 2, auraR * 2);
+
+  // Body — tall, gaunt silhouette
+  ctx.fillStyle = flash ? "#ffffff" : "#1a0410";
+  ctx.fillRect(h.x, h.y + 6, h.w, h.h - 6);
+
+  // Tattered cloak edges
+  ctx.fillStyle = flash ? "#ffffff" : "#3a0a14";
+  for (let i = 0; i < 5; i++) {
+    const fx = h.x + (i / 4) * (h.w - 4) + 2;
+    const fy = h.y + h.h - 4 + Math.sin(time * 0.15 + i) * 3;
+    ctx.fillRect(fx - 2, fy, 4, 6);
+  }
+
+  // Crown of ember spikes
+  ctx.fillStyle = flash ? "#ffffff" : COLORS.hunter;
+  for (let i = 0; i < 4; i++) {
+    const cx2 = h.x + 4 + i * 7;
+    ctx.beginPath();
+    ctx.moveTo(cx2, h.y + 2);
+    ctx.lineTo(cx2 + 3, h.y + 12);
+    ctx.lineTo(cx2 + 6, h.y + 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Glowing eyes — track the player by hunter facing
+  const eyeY = h.y + 14;
+  const eyeOff = h.facing === 1 ? 4 : -4;
+  const eyeColor = h.alertness > 60 ? "#ffe040" : "#ff6040";
+  ctx.fillStyle = eyeColor;
+  ctx.fillRect(h.x + 6 + eyeOff, eyeY, 4, 3);
+  ctx.fillRect(h.x + h.w - 10 + eyeOff, eyeY, 4, 3);
+  // Eye glow
+  ctx.globalAlpha = baseAlpha * 0.5;
+  ctx.fillRect(h.x + 4 + eyeOff, eyeY - 1, 8, 5);
+  ctx.fillRect(h.x + h.w - 12 + eyeOff, eyeY - 1, 8, 5);
+  ctx.globalAlpha = baseAlpha;
+
+  // Heart-ember in the chest
+  const heartPulse = 0.6 + Math.sin(time * 0.18) * 0.4;
+  ctx.fillStyle = `rgba(255, 80, 40, ${heartPulse})`;
+  ctx.fillRect(cx - 3, cy + 2, 6, 8);
+
+  ctx.restore();
+
+  // Smoldering particles on the ground beneath
+  if (time % 6 === 0 && appearTimer === 0) {
+    // Just a visual hint — actual particles are spawned by game logic if desired
+  }
 }

@@ -11,6 +11,11 @@ import {
   JUMP_VEL,
   MAX_FALL,
   MOVE_SPEED,
+  PHANTOM_DRAIN,
+  PHANTOM_MAX,
+  PHANTOM_MIN_RECHARGE,
+  PHANTOM_MOVE_MULT,
+  PHANTOM_RECHARGE,
   PROJECTILE_LIFE,
   PROJECTILE_SPEED,
   SHOOT_COOLDOWN,
@@ -25,7 +30,7 @@ import {
 } from "./player";
 import { moveAndCollide, rectOverlap } from "./physics";
 import type { AbilityKey, DoorSpawn, RoomDef } from "./types";
-import { ROOMS, STARTING_POS, STARTING_ROOM } from "./world";
+import { ROOMS, SL2_ADJ, STARTING_POS, STARTING_ROOM } from "./world";
 
 export interface RoomState {
   def: RoomDef;
@@ -51,6 +56,24 @@ export interface FloatingText {
   color: string;
 }
 
+export interface Hunter {
+  roomId: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  w: number;
+  h: number;
+  hp: number;
+  maxHp: number;
+  hitFlash: number;
+  travelCooldown: number;
+  alertness: number;
+  facing: 1 | -1;
+  jumpCooldown: number;
+  onGround: boolean;
+}
+
 export interface GameState {
   player: Player;
   currentRoomId: string;
@@ -67,7 +90,12 @@ export interface GameState {
   abilityToast: { ability: string; timer: number } | null;
   collectedAll: Set<string>;
   bossDefeated: boolean;
+  sovereignDefeated: boolean;
   roomBannerTimer: number;
+  sublayerBannerTimer: number;
+  lastSublayer: 1 | 2;
+  hunter: Hunter | null;
+  hunterAppearTimer: number;
 }
 
 export interface Particle {
@@ -108,7 +136,12 @@ export function createGame(): GameState {
     abilityToast: null,
     collectedAll: new Set(),
     bossDefeated: false,
+    sovereignDefeated: false,
     roomBannerTimer: 300,
+    sublayerBannerTimer: 240,
+    lastSublayer: 1,
+    hunter: null,
+    hunterAppearTimer: 0,
   };
 }
 
@@ -219,6 +252,8 @@ function applyTransition(g: GameState, door: DoorSpawn) {
 function performTransition(g: GameState) {
   const t = g.transition;
   if (!t) return;
+  const fromRoom = g.rooms[g.currentRoomId]?.def;
+  const toRoom = g.rooms[t.to]?.def;
   g.currentRoomId = t.to;
   const p = g.player;
   p.x = t.toX;
@@ -228,9 +263,140 @@ function performTransition(g: GameState) {
   p.dashTimer = 0;
   p.knockback = 0;
   p.transitionCooldown = 30;
+  p.phantomActive = false;
   if (t.facing === "right") p.facing = 1;
   if (t.facing === "left") p.facing = -1;
   g.roomBannerTimer = 300;
+
+  // Sublayer-change banner. The first time the player drops into Sublayer 2,
+  // spawn the Sovereign hunter at the deepest room.
+  const newSublayer = (toRoom?.sublayer ?? 1) as 1 | 2;
+  const oldSublayer = (fromRoom?.sublayer ?? 1) as 1 | 2;
+  if (newSublayer !== oldSublayer) {
+    g.sublayerBannerTimer = 240;
+    g.lastSublayer = newSublayer;
+    if (newSublayer === 2 && !g.hunter) {
+      g.hunter = createHunter("sl2_pierce_shrine");
+      g.hunterAppearTimer = 180;
+    }
+  }
+}
+
+function createHunter(roomId: string): Hunter {
+  return {
+    roomId,
+    x: 14 * TILE,
+    y: 13 * TILE,
+    vx: 0,
+    vy: 0,
+    w: 30,
+    h: 38,
+    hp: 28,
+    maxHp: 28,
+    hitFlash: 0,
+    travelCooldown: 150,
+    alertness: 0,
+    facing: -1,
+    jumpCooldown: 0,
+    onGround: false,
+  };
+}
+
+// BFS through the Sublayer 2 adjacency graph to pick the next room the hunter
+// should move toward in pursuit of the player.
+function nextHunterRoom(from: string, target: string): string | null {
+  if (from === target) return from;
+  const adj = SL2_ADJ;
+  if (!adj[from]) return null;
+  const visited = new Set<string>([from]);
+  const queue: { id: string; first: string }[] = [];
+  for (const n of adj[from]) {
+    queue.push({ id: n, first: n });
+    visited.add(n);
+  }
+  while (queue.length) {
+    const cur = queue.shift()!;
+    if (cur.id === target) return cur.first;
+    for (const n of adj[cur.id] ?? []) {
+      if (visited.has(n)) continue;
+      visited.add(n);
+      queue.push({ id: n, first: cur.first });
+    }
+  }
+  return null;
+}
+
+function updateHunter(g: GameState) {
+  const h = g.hunter;
+  if (!h) return;
+  if (h.hitFlash > 0) h.hitFlash--;
+
+  const sameRoom = h.roomId === g.currentRoomId;
+  const room = g.rooms[h.roomId];
+  if (!room) return;
+
+  if (!sameRoom) {
+    // Cross-room pursuit: drift through the labyrinth toward the player.
+    h.travelCooldown--;
+    if (h.travelCooldown <= 0) {
+      const next = nextHunterRoom(h.roomId, g.currentRoomId);
+      if (next && next !== h.roomId) {
+        h.roomId = next;
+        h.x = 14 * TILE;
+        h.y = 13 * TILE;
+        h.vx = 0;
+        h.vy = 0;
+      }
+      h.travelCooldown = 130;
+    }
+    return;
+  }
+
+  // Same room as the player — physical chase.
+  const p = g.player;
+  const phantom = p.phantomActive;
+  const spawning = g.hunterAppearTimer > 0;
+
+  // Gravity
+  h.vy += GRAVITY * 0.85;
+  if (h.vy > MAX_FALL) h.vy = MAX_FALL;
+
+  if (phantom || spawning) {
+    // Lost sight — drifts and slows.
+    h.vx *= 0.9;
+    h.alertness = Math.max(0, h.alertness - 1);
+  } else {
+    h.alertness = Math.min(100, h.alertness + 4);
+    const dx = p.x + p.w / 2 - (h.x + h.w / 2);
+    const dy = p.y + p.h / 2 - (h.y + h.h / 2);
+    const speed = 3.2;
+    h.vx = Math.sign(dx) * speed;
+    h.facing = dx > 0 ? 1 : -1;
+    // Try to hop when player is above and hunter is grounded.
+    if (h.onGround && dy < -24 && h.jumpCooldown <= 0) {
+      h.vy = -10;
+      h.jumpCooldown = 30;
+    }
+  }
+  if (h.jumpCooldown > 0) h.jumpCooldown--;
+
+  const move = moveAndCollide(h, room.def.tiles);
+  h.onGround = move.onGround;
+
+  // Contact damage to the player (only when visible & not phantom)
+  if (
+    !phantom &&
+    !spawning &&
+    p.invuln === 0 &&
+    p.dashTimer === 0 &&
+    rectOverlap(
+      { x: p.x, y: p.y, w: p.w, h: p.h },
+      { x: h.x, y: h.y, w: h.w, h: h.h },
+    )
+  ) {
+    damagePlayer(p, h.x + h.w / 2);
+    g.shake = 8;
+  }
 }
 
 export function updateGame(g: GameState, input: InputState) {
@@ -238,6 +404,8 @@ export function updateGame(g: GameState, input: InputState) {
   if (g.shake > 0) g.shake -= 0.5;
   if (g.shake < 0) g.shake = 0;
   if (g.roomBannerTimer > 0) g.roomBannerTimer--;
+  if (g.sublayerBannerTimer > 0) g.sublayerBannerTimer--;
+  if (g.hunterAppearTimer > 0) g.hunterAppearTimer--;
 
   if (input.pausePressed) g.paused = !g.paused;
 
@@ -307,10 +475,20 @@ export function updateGame(g: GameState, input: InputState) {
     p.vy += GRAVITY;
     if (p.vy > MAX_FALL) p.vy = MAX_FALL;
   } else {
+    // Phantom Veil: held key while ability unlocked and meter has charge.
+    // Halves movement speed but lets the player slip past the Sovereign hunter.
+    const wantPhantom =
+      p.abilities.phantom &&
+      input.phantom &&
+      p.phantomMeter > 0 &&
+      p.phantomCooldown === 0;
+    p.phantomActive = wantPhantom;
+    const speedMult = p.phantomActive ? PHANTOM_MOVE_MULT : 1;
+
     const accel = p.onGround ? GROUND_ACCEL : AIR_ACCEL;
     let target = 0;
-    if (input.left) target -= MOVE_SPEED;
-    if (input.right) target += MOVE_SPEED;
+    if (input.left) target -= MOVE_SPEED * speedMult;
+    if (input.right) target += MOVE_SPEED * speedMult;
     if (target !== 0) {
       p.vx += Math.sign(target - p.vx) * accel;
       if (Math.abs(p.vx - target) < accel) p.vx = target;
@@ -326,6 +504,30 @@ export function updateGame(g: GameState, input: InputState) {
     if (p.vy > MAX_FALL) p.vy = MAX_FALL;
     // Variable jump height
     if (!input.jump && p.vy < -2) p.vy *= 0.86;
+  }
+
+  // Phantom meter drain / recharge.
+  if (p.phantomActive) {
+    p.phantomMeter -= PHANTOM_DRAIN;
+    if (p.phantomMeter <= 0) {
+      p.phantomMeter = 0;
+      p.phantomActive = false;
+      p.phantomCooldown = PHANTOM_MIN_RECHARGE;
+    }
+    // Wisp particles trailing behind the player
+    if (g.gameTime % 4 === 0) {
+      spawnParticles(g, p.x + p.w / 2, p.y + p.h / 2, 1, "#90c0ff", {
+        spread: 0.6,
+        gravity: -0.05,
+        life: 28,
+      });
+    }
+  } else {
+    if (p.phantomCooldown > 0) p.phantomCooldown--;
+    if (p.phantomMeter < PHANTOM_MAX) {
+      p.phantomMeter += PHANTOM_RECHARGE;
+      if (p.phantomMeter > PHANTOM_MAX) p.phantomMeter = PHANTOM_MAX;
+    }
   }
 
   if (input.jumpPressed) p.jumpBuffer = JUMP_BUFFER;
@@ -371,6 +573,7 @@ export function updateGame(g: GameState, input: InputState) {
         if (reqs.some((r) => !p.abilities[r])) continue;
       }
       if (door.requiresBoss && !g.bossDefeated) continue;
+      if (door.requiresSovereign && !g.sovereignDefeated) continue;
       const overlap = rectOverlap(
         { x: p.x, y: p.y, w: p.w, h: p.h },
         { x: door.x, y: door.y, w: door.w, h: door.h },
@@ -543,8 +746,12 @@ export function updateGame(g: GameState, input: InputState) {
             { spread: 4, gravity: 0.1, life: 38 },
           );
           if (e.kind === "sovereign") {
-            g.victory = true;
-            g.victoryTimer = 0;
+            // First Sovereign defeat opens Sublayer 2 and drains the Pierce
+            // Shard from the player. The true ending requires hunting down
+            // the Sovereign's wraith in the labyrinth below.
+            g.sovereignDefeated = true;
+            g.player.abilities.pierce = false;
+            g.abilityToast = { ability: "pierceLost", timer: 260 };
             g.shake = 36;
           } else if (e.kind === "boss") {
             g.bossDefeated = true;
@@ -580,6 +787,60 @@ export function updateGame(g: GameState, input: InputState) {
         damagePlayer(p, pr.x + pr.w / 2);
         g.projectiles.splice(i, 1);
         g.shake = 6;
+      }
+    }
+  }
+
+  // Hunter (Sovereign wraith) — only present in Sublayer 2
+  if (g.hunter) {
+    updateHunter(g);
+    // Player projectile vs. hunter
+    if (g.hunter.roomId === g.currentRoomId) {
+      const h = g.hunter;
+      for (let i = g.projectiles.length - 1; i >= 0; i--) {
+        const pr = g.projectiles[i];
+        if (!pr.fromPlayer) continue;
+        if (pr.hitEnemies && pr.hitEnemies.has(h as unknown as Enemy)) continue;
+        if (
+          !rectOverlap(
+            { x: pr.x, y: pr.y, w: pr.w, h: pr.h },
+            { x: h.x, y: h.y, w: h.w, h: h.h },
+          )
+        ) {
+          continue;
+        }
+        if (!pr.pierce) {
+          // Without the Pierce Shard, bolts ping off the wraith harmlessly.
+          spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 6, "#ffb060", {
+            spread: 3,
+            gravity: 0,
+            life: 16,
+          });
+          g.projectiles.splice(i, 1);
+          continue;
+        }
+        h.hp -= pr.damage;
+        h.hitFlash = 8;
+        spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 8, "#ffd060", {
+          spread: 3,
+          gravity: 0,
+          life: 18,
+        });
+        if (h.hp <= 0) {
+          // True ending — the wraith is unmade.
+          g.victory = true;
+          g.victoryTimer = 0;
+          g.shake = 48;
+          spawnParticles(g, h.x + h.w / 2, h.y + h.h / 2, 32, "#ff5020", {
+            spread: 5,
+            gravity: 0.05,
+            life: 60,
+          });
+          g.hunter = null;
+          break;
+        }
+        pr.hitEnemies ??= new Set();
+        pr.hitEnemies.add(h as unknown as Enemy);
       }
     }
   }

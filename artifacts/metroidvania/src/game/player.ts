@@ -51,6 +51,9 @@ export interface Player {
   spawnRoom: string;
   spawnX: number;
   spawnY: number;
+  phantomActive: boolean;
+  phantomMeter: number;
+  phantomCooldown: number;
 }
 
 export function createPlayer(spawnRoom: string, x: number, y: number): Player {
@@ -75,7 +78,13 @@ export function createPlayer(spawnRoom: string, x: number, y: number): Player {
     invuln: 0,
     knockback: 0,
     transitionCooldown: 0,
-    abilities: { doubleJump: false, dash: false, blast: true, pierce: false },
+    abilities: {
+      doubleJump: false,
+      dash: false,
+      blast: true,
+      pierce: false,
+      phantom: false,
+    },
     collectedPickups: new Set(),
     alive: true,
     deathTimer: 0,
@@ -84,6 +93,9 @@ export function createPlayer(spawnRoom: string, x: number, y: number): Player {
     spawnRoom,
     spawnX: x,
     spawnY: y,
+    phantomActive: false,
+    phantomMeter: 240,
+    phantomCooldown: 0,
   };
 }
 
