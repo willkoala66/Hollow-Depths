@@ -804,7 +804,7 @@ export const ROOMS: Record<string, RoomDef> = {
         toX: 2 * TILE,
         toY: 14 * TILE,
         facing: "right",
-        requires: "pierce",
+        requiresBoss: true,
       },
     ],
     saves: [{ x: 15 * TILE, y: 15 * TILE - 4 }],
@@ -823,6 +823,7 @@ export const ROOMS: Record<string, RoomDef> = {
       },
     ],
     pickups: [],
+    saves: [{ x: 14 * TILE, y: 15 * TILE - 4 }],
     doors: [
       {
         x: 0,
