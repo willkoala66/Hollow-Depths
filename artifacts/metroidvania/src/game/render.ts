@@ -111,6 +111,15 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
   // Hunter (Sublayer 2 wraith) — only if it's in this room
   if (g.hunter && g.hunter.roomId === g.currentRoomId) {
     drawHunter(ctx, g.hunter, g.gameTime, g.hunterAppearTimer);
+    // Red pulsing vignette while being chased in the same room.
+    const pulse = 0.07 + Math.sin(g.gameTime * 0.14) * 0.04;
+    const vgW = ROOM_W * TILE;
+    const vgH = ROOM_H * TILE;
+    const vg = ctx.createRadialGradient(vgW / 2, vgH / 2, vgH * 0.25, vgW / 2, vgH / 2, vgW * 0.75);
+    vg.addColorStop(0, `rgba(0,0,0,0)`);
+    vg.addColorStop(1, `rgba(180,0,0,${pulse.toFixed(3)})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, vgW, vgH);
   }
 
   // Projectiles
@@ -1109,65 +1118,104 @@ function drawHunter(
   const cx = h.x + h.w / 2;
   const cy = h.y + h.h / 2;
 
+  // Entry flash ring — blazes outward when the Hunter squeezes through a door.
+  if (h.doorEntryFlash > 0) {
+    const ef = h.doorEntryFlash;
+    const ringR = (30 - ef) * 4.5;
+    const ringAlpha = ef / 30;
+    ctx.save();
+    ctx.globalAlpha = ringAlpha;
+    const ring = ctx.createRadialGradient(cx, cy, ringR * 0.4, cx, cy, ringR);
+    ring.addColorStop(0, `rgba(255,160,80,0.9)`);
+    ring.addColorStop(0.5, `rgba(220,40,60,0.6)`);
+    ring.addColorStop(1, `rgba(200,0,20,0)`);
+    ctx.fillStyle = ring;
+    ctx.fillRect(cx - ringR, cy - ringR, ringR * 2, ringR * 2);
+    ctx.restore();
+  }
+
   // Phasing-in alpha while spawning
-  const baseAlpha = appearTimer > 0 ? 0.25 + (180 - appearTimer) / 180 * 0.75 : 1;
+  const baseAlpha = appearTimer > 0 ? 0.25 + ((180 - appearTimer) / 180) * 0.75 : 1;
   ctx.save();
   ctx.globalAlpha = baseAlpha;
 
-  // Outer aura — pulses with menace
-  const auraR = 36 + Math.sin(time * 0.1) * 4;
+  // Outer aura — pulses with menace, grows when on walls/ceiling
+  const auraBase = h.crawlSurface === "wallL" || h.crawlSurface === "wallR" || h.crawlSurface === "ceiling" ? 44 : 36;
+  const auraR = auraBase + Math.sin(time * 0.1) * 5;
   const aura = ctx.createRadialGradient(cx, cy, 0, cx, cy, auraR);
-  aura.addColorStop(0, `rgba(255, 64, 80, 0.55)`);
+  aura.addColorStop(0, `rgba(255, 64, 80, 0.6)`);
   aura.addColorStop(1, `rgba(255, 64, 80, 0)`);
   ctx.fillStyle = aura;
   ctx.fillRect(cx - auraR, cy - auraR, auraR * 2, auraR * 2);
 
-  // Body — tall, gaunt silhouette
-  ctx.fillStyle = flash ? "#ffffff" : "#1a0410";
-  ctx.fillRect(h.x, h.y + 6, h.w, h.h - 6);
-
-  // Tattered cloak edges
-  ctx.fillStyle = flash ? "#ffffff" : "#3a0a14";
-  for (let i = 0; i < 5; i++) {
-    const fx = h.x + (i / 4) * (h.w - 4) + 2;
-    const fy = h.y + h.h - 4 + Math.sin(time * 0.15 + i) * 3;
-    ctx.fillRect(fx - 2, fy, 4, 6);
+  // Crawl tendrils — long limb-like strips pressed against surfaces.
+  if (h.crawlSurface === "wallL" || h.crawlSurface === "wallR") {
+    const wallX = h.crawlSurface === "wallL" ? h.x - 6 : h.x + h.w - 2;
+    ctx.fillStyle = flash ? "#ffffff" : "#2a0418";
+    for (let i = 0; i < 4; i++) {
+      const ty = h.y + 4 + i * 9 + Math.sin(time * 0.13 + i) * 2;
+      const len = 12 + Math.sin(time * 0.1 + i * 1.3) * 4;
+      const dir = h.crawlSurface === "wallL" ? -1 : 1;
+      ctx.fillRect(wallX, ty, len * dir, 4);
+    }
+  } else if (h.crawlSurface === "ceiling") {
+    ctx.fillStyle = flash ? "#ffffff" : "#2a0418";
+    for (let i = 0; i < 4; i++) {
+      const tx = h.x + 4 + i * 7 + Math.sin(time * 0.11 + i) * 2;
+      const len = 10 + Math.sin(time * 0.09 + i * 1.4) * 3;
+      ctx.fillRect(tx, h.y - len, 4, len);
+    }
   }
 
-  // Crown of ember spikes
+  // Body — shape adapts to crawl surface.
+  const onWall = h.crawlSurface === "wallL" || h.crawlSurface === "wallR";
+  const bodyX = onWall ? h.x - 2 : h.x;
+  const bodyW = onWall ? h.w + 4 : h.w;
+  const bodyH = onWall ? h.h - 10 : h.h - 6;
+  const bodyOffY = h.crawlSurface === "ceiling" ? 0 : 6;
+  ctx.fillStyle = flash ? "#ffffff" : "#1a0410";
+  ctx.fillRect(bodyX, h.y + bodyOffY, bodyW, bodyH);
+
+  // Tattered cloak edges — drip toward gravity pull (always downward in the room).
+  ctx.fillStyle = flash ? "#ffffff" : "#3a0a14";
+  const cloakDir = h.crawlSurface === "ceiling" ? -1 : 1;
+  const cloakBase = h.crawlSurface === "ceiling" ? h.y + 4 : h.y + h.h - 4;
+  for (let i = 0; i < 5; i++) {
+    const fx = h.x + (i / 4) * (h.w - 4) + 2;
+    const fy = cloakBase + Math.sin(time * 0.15 + i) * 3 * cloakDir;
+    ctx.fillRect(fx - 2, fy, 4, 6 * cloakDir);
+  }
+
+  // Crown of ember spikes — point away from the surface.
   ctx.fillStyle = flash ? "#ffffff" : COLORS.hunter;
+  const spikeDir = h.crawlSurface === "ceiling" ? 1 : -1;
+  const spikeBase = h.crawlSurface === "ceiling" ? h.y + h.h - 2 : h.y + 2;
   for (let i = 0; i < 4; i++) {
-    const cx2 = h.x + 4 + i * 7;
+    const sx = h.x + 4 + i * 7;
     ctx.beginPath();
-    ctx.moveTo(cx2, h.y + 2);
-    ctx.lineTo(cx2 + 3, h.y + 12);
-    ctx.lineTo(cx2 + 6, h.y + 2);
+    ctx.moveTo(sx, spikeBase);
+    ctx.lineTo(sx + 3, spikeBase + 10 * spikeDir);
+    ctx.lineTo(sx + 6, spikeBase);
     ctx.closePath();
     ctx.fill();
   }
 
-  // Glowing eyes — track the player by hunter facing
-  const eyeY = h.y + 14;
+  // Glowing eyes — track facing direction.
+  const eyeY = h.crawlSurface === "ceiling" ? h.y + h.h - 14 : h.y + 14;
   const eyeOff = h.facing === 1 ? 4 : -4;
   const eyeColor = h.alertness > 60 ? "#ffe040" : "#ff6040";
   ctx.fillStyle = eyeColor;
   ctx.fillRect(h.x + 6 + eyeOff, eyeY, 4, 3);
   ctx.fillRect(h.x + h.w - 10 + eyeOff, eyeY, 4, 3);
-  // Eye glow
   ctx.globalAlpha = baseAlpha * 0.5;
   ctx.fillRect(h.x + 4 + eyeOff, eyeY - 1, 8, 5);
   ctx.fillRect(h.x + h.w - 12 + eyeOff, eyeY - 1, 8, 5);
   ctx.globalAlpha = baseAlpha;
 
-  // Heart-ember in the chest
+  // Heart-ember in the chest.
   const heartPulse = 0.6 + Math.sin(time * 0.18) * 0.4;
   ctx.fillStyle = `rgba(255, 80, 40, ${heartPulse})`;
   ctx.fillRect(cx - 3, cy + 2, 6, 8);
 
   ctx.restore();
-
-  // Smoldering particles on the ground beneath
-  if (time % 6 === 0 && appearTimer === 0) {
-    // Just a visual hint — actual particles are spawned by game logic if desired
-  }
 }

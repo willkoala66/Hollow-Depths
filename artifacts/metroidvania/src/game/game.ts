@@ -72,6 +72,8 @@ export interface Hunter {
   facing: 1 | -1;
   jumpCooldown: number;
   onGround: boolean;
+  doorEntryFlash: number;
+  crawlSurface: "none" | "floor" | "wallL" | "wallR" | "ceiling";
 }
 
 export interface GameState {
@@ -299,6 +301,8 @@ function createHunter(roomId: string): Hunter {
     facing: -1,
     jumpCooldown: 0,
     onGround: false,
+    doorEntryFlash: 0,
+    crawlSurface: "none",
   };
 }
 
@@ -326,64 +330,114 @@ function nextHunterRoom(from: string, target: string): string | null {
   return null;
 }
 
+const HUNTER_SPEED = 5.0;
+const HUNTER_DOOR_RANGE = 22;
+
 function updateHunter(g: GameState) {
   const h = g.hunter;
   if (!h) return;
   if (h.hitFlash > 0) h.hitFlash--;
+  if (h.doorEntryFlash > 0) h.doorEntryFlash--;
 
   const sameRoom = h.roomId === g.currentRoomId;
   const room = g.rooms[h.roomId];
   if (!room) return;
 
   if (!sameRoom) {
-    // Cross-room pursuit: drift through the labyrinth toward the player.
-    h.travelCooldown--;
-    if (h.travelCooldown <= 0) {
-      const next = nextHunterRoom(h.roomId, g.currentRoomId);
-      if (next && next !== h.roomId) {
-        h.roomId = next;
+    // Cross-room pursuit: physically move toward the exit door that leads to
+    // the player's room, then squeeze through it.
+    const nextRoomId = nextHunterRoom(h.roomId, g.currentRoomId);
+    if (!nextRoomId || nextRoomId === h.roomId) return;
+
+    const exitDoor = room.def.doors.find((d) => d.toRoom === nextRoomId);
+    if (!exitDoor) {
+      // Fallback timed hop when there is no directly matching door entry.
+      h.travelCooldown--;
+      if (h.travelCooldown <= 0) {
+        h.roomId = nextRoomId;
         h.x = 14 * TILE;
         h.y = 13 * TILE;
         h.vx = 0;
         h.vy = 0;
+        h.doorEntryFlash = 25;
+        g.shake = 12;
+        h.travelCooldown = 60;
       }
-      h.travelCooldown = 130;
+      return;
+    }
+
+    // Move toward door centre in the off-screen room.
+    const doorCX = exitDoor.x + exitDoor.w / 2 - h.w / 2;
+    const doorCY = exitDoor.y + exitDoor.h / 2 - h.h / 2;
+    const dx = doorCX - h.x;
+    const dy = doorCY - h.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < HUNTER_DOOR_RANGE) {
+      // Pass through — appear at the matching entry in the next room.
+      h.roomId = nextRoomId;
+      h.x = exitDoor.toX;
+      h.y = exitDoor.toY;
+      h.vx = 0;
+      h.vy = 0;
+      h.doorEntryFlash = 30;
+      h.alertness = 100;
+      // Shake only when entering the player's current room.
+      if (nextRoomId === g.currentRoomId) g.shake = 16;
+    } else {
+      const spd = HUNTER_SPEED * 1.1;
+      h.vx = (dx / dist) * spd;
+      h.vy = (dy / dist) * spd;
+      moveAndCollide(h, room.def.tiles);
     }
     return;
   }
 
-  // Same room as the player — physical chase.
+  // ── Same room as the player ──────────────────────────────────────────────
   const p = g.player;
   const phantom = p.phantomActive;
   const spawning = g.hunterAppearTimer > 0;
 
-  // Gravity
-  h.vy += GRAVITY * 0.85;
-  if (h.vy > MAX_FALL) h.vy = MAX_FALL;
-
   if (phantom || spawning) {
-    // Lost sight — drifts and slows.
-    h.vx *= 0.9;
+    // Lost sight — drift to a halt.
+    h.vx *= 0.88;
+    h.vy *= 0.88;
     h.alertness = Math.max(0, h.alertness - 1);
-  } else {
-    h.alertness = Math.min(100, h.alertness + 4);
-    const dx = p.x + p.w / 2 - (h.x + h.w / 2);
-    const dy = p.y + p.h / 2 - (h.y + h.h / 2);
-    const speed = 3.2;
-    h.vx = Math.sign(dx) * speed;
-    h.facing = dx > 0 ? 1 : -1;
-    // Try to hop when player is above and hunter is grounded.
-    if (h.onGround && dy < -24 && h.jumpCooldown <= 0) {
-      h.vy = -10;
-      h.jumpCooldown = 30;
-    }
+    moveAndCollide(h, room.def.tiles);
+    return;
   }
-  if (h.jumpCooldown > 0) h.jumpCooldown--;
 
+  h.alertness = Math.min(100, h.alertness + 6);
+
+  const dx = p.x + p.w / 2 - (h.x + h.w / 2);
+  const dy = p.y + p.h / 2 - (h.y + h.h / 2);
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist > 1) {
+    // Speed ramps up slightly when far away (feels relentless).
+    const spd = HUNTER_SPEED + Math.min(1.5, dist / 160);
+    h.vx = (dx / dist) * spd;
+    h.vy = (dy / dist) * spd;
+    h.facing = dx > 0 ? 1 : -1;
+  }
+
+  // Detect wall/ceiling/floor before moveAndCollide zeroes the velocity.
+  const preVx = h.vx;
+  const preVy = h.vy;
   const move = moveAndCollide(h, room.def.tiles);
   h.onGround = move.onGround;
 
-  // Contact damage to the player (only when visible & not phantom)
+  if (move.hitX && !move.hitY) {
+    h.crawlSurface = preVx < 0 ? "wallL" : "wallR";
+  } else if (move.hitY && !move.hitX) {
+    h.crawlSurface = preVy < 0 ? "ceiling" : "floor";
+  } else if (move.onGround) {
+    h.crawlSurface = "floor";
+  } else {
+    h.crawlSurface = "none";
+  }
+
+  // Contact damage to the player.
   if (
     !phantom &&
     !spawning &&
@@ -395,7 +449,7 @@ function updateHunter(g: GameState) {
     )
   ) {
     damagePlayer(p, h.x + h.w / 2);
-    g.shake = 8;
+    g.shake = 10;
   }
 }
 
