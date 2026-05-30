@@ -31,6 +31,7 @@ function formatFrames(frames: number | null | undefined): string {
 export default function Game() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [screen, setScreen] = useState<Screen>("title");
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const inputRef = useRef(createInputState());
   const gameRef = useRef<GameState>(createGame());
   const victoryTriggered = useRef(false);
@@ -39,6 +40,7 @@ export default function Game() {
     gameRef.current = createGame();
     victoryTriggered.current = false;
     inputRef.current = createInputState();
+    setShowQuitConfirm(false);
     setScreen("playing");
   }, []);
 
@@ -94,8 +96,59 @@ export default function Game() {
             onPlayAgain={startGame}
           />
         )}
+        {screen === "playing" && (
+          <button
+            className="quit-btn"
+            onClick={() => setShowQuitConfirm(true)}
+            title="Return to title"
+          >
+            ↩ Title
+          </button>
+        )}
+        {showQuitConfirm && (
+          <QuitConfirmModal
+            onConfirm={() => { setShowQuitConfirm(false); setScreen("title"); }}
+            onCancel={() => setShowQuitConfirm(false)}
+          />
+        )}
       </div>
       <p className="game-credits">Hollow Depths — a 2D metroidvania built in canvas</p>
+    </div>
+  );
+}
+
+function QuitConfirmModal({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Escape") { e.preventDefault(); onCancel(); }
+      if (e.code === "Enter") { e.preventDefault(); onConfirm(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onConfirm, onCancel]);
+
+  return (
+    <div className="quit-modal-bg" onClick={onCancel}>
+      <div className="quit-modal" onClick={(e) => e.stopPropagation()}>
+        <p className="quit-modal-title">Return to Title?</p>
+        <p className="quit-modal-body">
+          Your run will end and progress will not be saved.
+        </p>
+        <div className="quit-modal-actions">
+          <button className="title-start" onClick={onConfirm}>
+            QUIT RUN
+          </button>
+          <button className="title-lb-btn" onClick={onCancel}>
+            KEEP PLAYING
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -238,6 +238,81 @@ body {
   color: var(--text);
 }
 
+/* ── In-game quit button ──────────────────────────────────────────────── */
+.quit-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 4px 10px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(160, 130, 210, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(160, 112, 255, 0.15);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.quit-btn:hover {
+  color: rgba(200, 170, 255, 0.9);
+  border-color: rgba(160, 112, 255, 0.45);
+  background: rgba(0, 0, 0, 0.65);
+}
+
+/* ── Quit confirm modal ───────────────────────────────────────────────── */
+.quit-modal-bg {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 1, 12, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  animation: fade-in 0.15s ease both;
+}
+
+.quit-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 32px 36px;
+  background: rgba(10, 4, 24, 0.97);
+  border: 1px solid rgba(160, 112, 255, 0.3);
+  border-radius: 4px;
+  box-shadow: 0 0 40px rgba(80, 30, 140, 0.3);
+  max-width: 320px;
+  text-align: center;
+}
+
+.quit-modal-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.quit-modal-body {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.quit-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
 /* ── Title button row ─────────────────────────────────────────────────── */
 .title-btn-row {
   display: flex;
