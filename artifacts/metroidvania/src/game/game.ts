@@ -98,6 +98,14 @@ export interface GameState {
   lastSublayer: 1 | 2;
   hunter: Hunter | null;
   hunterAppearTimer: number;
+  // Run stats — recorded for the leaderboard
+  deaths: number;
+  hollowDefeatedTime: number | null;
+  sovereignDefeatedTime: number | null;
+  hunterDefeatedTime: number | null;
+  playerHpAtHollow: number;
+  playerHpAtSovereign: number;
+  playerHpAtHunter: number;
 }
 
 export interface Particle {
@@ -144,6 +152,13 @@ export function createGame(): GameState {
     lastSublayer: 1,
     hunter: null,
     hunterAppearTimer: 0,
+    deaths: 0,
+    hollowDefeatedTime: null,
+    sovereignDefeatedTime: null,
+    hunterDefeatedTime: null,
+    playerHpAtHollow: 0,
+    playerHpAtSovereign: 0,
+    playerHpAtHunter: 0,
   };
 }
 
@@ -804,11 +819,15 @@ export function updateGame(g: GameState, input: InputState) {
             // Shard from the player. The true ending requires hunting down
             // the Sovereign's wraith in the labyrinth below.
             g.sovereignDefeated = true;
+            g.sovereignDefeatedTime = g.gameTime;
+            g.playerHpAtSovereign = g.player.hp;
             g.player.abilities.pierce = false;
             g.abilityToast = { ability: "pierceLost", timer: 260 };
             g.shake = 36;
           } else if (e.kind === "boss") {
             g.bossDefeated = true;
+            g.hollowDefeatedTime = g.gameTime;
+            g.playerHpAtHollow = g.player.hp;
             g.shake = 30;
           } else {
             g.shake = Math.max(g.shake, 3);
@@ -884,6 +903,8 @@ export function updateGame(g: GameState, input: InputState) {
           // True ending — the wraith is unmade.
           g.victory = true;
           g.victoryTimer = 0;
+          g.hunterDefeatedTime = g.gameTime;
+          g.playerHpAtHunter = g.player.hp;
           g.shake = 48;
           spawnParticles(g, h.x + h.w / 2, h.y + h.h / 2, 32, "#ff5020", {
             spread: 5,
@@ -920,6 +941,7 @@ export function updateGame(g: GameState, input: InputState) {
 }
 
 function respawnPlayer(g: GameState) {
+  g.deaths++;
   const p = g.player;
   p.alive = true;
   p.hp = p.maxHp;
