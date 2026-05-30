@@ -32,6 +32,8 @@ export default function Game() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [screen, setScreen] = useState<Screen>("title");
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const prevPausedRef = useRef(false);
   const inputRef = useRef(createInputState());
   const gameRef = useRef<GameState>(createGame());
   const victoryTriggered = useRef(false);
@@ -41,7 +43,15 @@ export default function Game() {
     victoryTriggered.current = false;
     inputRef.current = createInputState();
     setShowQuitConfirm(false);
+    setIsPaused(false);
+    prevPausedRef.current = false;
     setScreen("playing");
+  }, []);
+
+  const handleResume = useCallback(() => {
+    gameRef.current.paused = false;
+    prevPausedRef.current = false;
+    setIsPaused(false);
   }, []);
 
   useEffect(() => {
@@ -64,6 +74,10 @@ export default function Game() {
       const ctx = canvasRef.current?.getContext("2d");
       if (ctx) renderGame(ctx, gameRef.current);
       const g = gameRef.current;
+      if (g.paused !== prevPausedRef.current) {
+        prevPausedRef.current = g.paused;
+        setIsPaused(g.paused);
+      }
       if (g.victory && g.victoryTimer > 90 && !victoryTriggered.current) {
         victoryTriggered.current = true;
         setScreen("victory");
@@ -96,14 +110,11 @@ export default function Game() {
             onPlayAgain={startGame}
           />
         )}
-        {screen === "playing" && (
-          <button
-            className="quit-btn"
-            onClick={() => setShowQuitConfirm(true)}
-            title="Return to title"
-          >
-            ↩ Title
-          </button>
+        {screen === "playing" && isPaused && !showQuitConfirm && (
+          <PauseOverlay
+            onResume={handleResume}
+            onQuit={() => setShowQuitConfirm(true)}
+          />
         )}
         {showQuitConfirm && (
           <QuitConfirmModal
@@ -113,6 +124,38 @@ export default function Game() {
         )}
       </div>
       <p className="game-credits">Hollow Depths — a 2D metroidvania built in canvas</p>
+    </div>
+  );
+}
+
+function PauseOverlay({
+  onResume,
+  onQuit,
+}: {
+  onResume: () => void;
+  onQuit: () => void;
+}) {
+  return (
+    <div className="title-overlay" style={{ backdropFilter: "blur(3px)", background: "rgba(4,1,12,0.72)" }}>
+      <div className="pause-panel">
+        <p className="pause-title">Paused</p>
+        <div className="pause-controls">
+          <Control label="Move" keys={["←", "→"]} />
+          <Control label="Jump" keys={["↑"]} />
+          <Control label="Dash" keys={["X"]} />
+          <Control label="Strike" keys={["C"]} />
+          <Control label="Phantom Veil" keys={["Z (hold)"]} />
+          <Control label="Pause" keys={["Esc"]} />
+        </div>
+        <div className="pause-actions">
+          <button className="title-start" onClick={onResume}>
+            RESUME
+          </button>
+          <button className="title-lb-btn" onClick={onQuit}>
+            RETURN TO TITLE
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

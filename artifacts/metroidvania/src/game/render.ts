@@ -213,34 +213,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   }
 
-  // Pause overlay
-  if (g.paused && !g.victory) {
-    ctx.fillStyle = "rgba(5, 2, 14, 0.8)";
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-    ctx.fillStyle = COLORS.text;
-    ctx.font = "bold 48px serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("PAUSED", VIEW_W / 2, VIEW_H / 2 - 60);
-    ctx.font = "14px sans-serif";
-    ctx.fillStyle = COLORS.textDim;
-    const lines = [
-      "Move    ←  →   or   A  D",
-      "Jump    W   K   or   SPACE",
-      "Dash    X   L   or   SHIFT",
-      "Shoot   C   J",
-      "Phantom Veil    Z   F   (hold)",
-      "Pause   ESC   P",
-    ];
-    let y = VIEW_H / 2;
-    for (const line of lines) {
-      ctx.fillText(line, VIEW_W / 2, y);
-      y += 26;
-    }
-    ctx.fillStyle = COLORS.textDim;
-    ctx.font = "12px sans-serif";
-    ctx.fillText("Press ESC to resume", VIEW_W / 2, y + 24);
-  }
+  // Pause overlay is rendered as a React component in Game.tsx
 
   // Victory overlay
   if (g.victory) {

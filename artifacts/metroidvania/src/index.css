@@ -238,30 +238,46 @@ body {
   color: var(--text);
 }
 
-/* ── In-game quit button ──────────────────────────────────────────────── */
-.quit-btn {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  padding: 4px 10px;
-  font-family: var(--font-sans);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(160, 130, 210, 0.5);
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(160, 112, 255, 0.15);
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 10;
+/* ── Pause overlay ────────────────────────────────────────────────────── */
+.pause-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 36px 40px;
+  background: rgba(8, 3, 20, 0.96);
+  border: 1px solid rgba(160, 112, 255, 0.25);
+  border-radius: 4px;
+  box-shadow: 0 0 60px rgba(60, 20, 120, 0.4);
+  animation: fade-in 0.15s ease both;
+  min-width: 280px;
 }
 
-.quit-btn:hover {
-  color: rgba(200, 170, 255, 0.9);
-  border-color: rgba(160, 112, 255, 0.45);
-  background: rgba(0, 0, 0, 0.65);
+.pause-title {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.pause-controls {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 20px;
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 12px 0;
+  border-top: 1px solid rgba(160, 112, 255, 0.12);
+  border-bottom: 1px solid rgba(160, 112, 255, 0.12);
+}
+
+.pause-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
 }
 
 /* ── Quit confirm modal ───────────────────────────────────────────────── */
