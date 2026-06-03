@@ -817,7 +817,7 @@ export const ROOMS: Record<string, RoomDef> = {
     enemies: [
       {
         kind: "sovereign",
-        x: 15 * TILE - 34,
+        x: 22 * TILE - 34,
         y: 14 * TILE - 36,
         hp: 32,
       },
