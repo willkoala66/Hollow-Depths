@@ -269,6 +269,7 @@ function VictoryScreen({
 }) {
   const [name, setName] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [placement, setPlacement] = useState<{ rank: number; total: number } | null>(null);
   const runFrames = game.hunterDefeatedTime ?? game.gameTime;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -292,6 +293,8 @@ function VictoryScreen({
         }),
       });
       if (!res.ok) throw new Error("submit failed");
+      const data = await res.json();
+      setPlacement({ rank: data.rank, total: data.total });
       setStatus("done");
     } catch {
       setStatus("error");
@@ -337,7 +340,17 @@ function VictoryScreen({
             )}
           </form>
         ) : (
-          <p className="victory-saved">✓ Run recorded</p>
+          <div className="victory-placement">
+            <p className="victory-saved">✓ Run recorded</p>
+            {placement && (
+              <p className="victory-rank">
+                You placed{" "}
+                <span className="victory-rank-num">#{placement.rank}</span>
+                {" "}of {placement.total} {placement.total === 1 ? "run" : "runs"}
+                {placement.rank === 1 ? " — top of the board!" : placement.rank <= 10 ? " — you're on the board!" : ""}
+              </p>
+            )}
+          </div>
         )}
 
         <div className="victory-actions">

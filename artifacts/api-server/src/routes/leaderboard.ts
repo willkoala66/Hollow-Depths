@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, leaderboardTable } from "@workspace/db";
-import { asc, desc } from "drizzle-orm";
+import { asc, desc, lt, count } from "drizzle-orm";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -50,7 +50,14 @@ router.post("/leaderboard", async (req, res) => {
       .insert(leaderboardTable)
       .values(result.data)
       .returning();
-    res.status(201).json(entry);
+    const [{ rankAbove }] = await db
+      .select({ rankAbove: count() })
+      .from(leaderboardTable)
+      .where(lt(leaderboardTable.totalFrames, entry.totalFrames));
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(leaderboardTable);
+    res.status(201).json({ ...entry, rank: Number(rankAbove) + 1, total: Number(total) });
   } catch (err) {
     req.log.error({ err }, "Failed to insert leaderboard entry");
     res.status(500).json({ error: "Failed to save entry" });
