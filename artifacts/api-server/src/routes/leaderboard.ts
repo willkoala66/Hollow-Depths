@@ -30,7 +30,8 @@ router.get("/leaderboard", async (req, res) => {
         asc(leaderboardTable.hollowFrames),
         asc(leaderboardTable.sovereignFrames),
         asc(leaderboardTable.createdAt),
-      );
+      )
+      .limit(10);
     res.json(entries);
   } catch (err) {
     req.log.error({ err }, "Failed to fetch leaderboard");
