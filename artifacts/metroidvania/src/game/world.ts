@@ -312,6 +312,7 @@ const sl2WestRows = [
 
 // Top opening (cols 13-16) from sl2_north. Left opening to sl2_west.
 // Right opening to sl2_east. Save shrine here at the labyrinth's heart.
+// Bottom center opening (cols 13-16) drops down to sl3_entry after Hunter falls.
 const sl2HubRows = [
   "#############....#############",
   "#############....#############",
@@ -329,6 +330,78 @@ const sl2HubRows = [
   "#............................#",
   " ............................ ",
   " ............................ ",
+  "#############....#############",
+  "#############....#############",
+];
+
+// ============================================================================
+// SUBLAYER 3 — The Sunken Wound
+// Deep beyond the Labyrinth, where something ancient and immense waits.
+// ============================================================================
+
+// Entry from sl2_hub bottom. Right door to sl3_corridor.
+const sl3EntryRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#............................#",
+  "#....####..............####..#",
+  "#............................#",
+  "#............................#",
+  "#..######........######......#",
+  "#............................#",
+  "#............................#",
+  "#....####..............####..#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................ ",
+  "#............................ ",
+  "##############################",
+  "##############################",
+];
+
+// Left door from sl3_entry. Right door to sl3_boss.
+const sl3CorridorRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#............................#",
+  "#....######..........######..#",
+  "#............................#",
+  "#............................#",
+  "#....####..........####......#",
+  "#............................#",
+  "#............................#",
+  "#..####..............####....#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  " ............................ ",
+  " ............................ ",
+  "##############################",
+  "##############################",
+];
+
+// Left door from sl3_corridor. Wide open arena — platforms on both sides.
+// The Ancient Terror (Kraid) lurks at the centre bottom.
+const sl3BossRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#...##..................##...#",
+  "#............................#",
+  "#...########......########...#",
+  "#............................#",
+  "#............................#",
+  "#...####..............####...#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  " ............................#",
+  " ............................#",
   "##############################",
   "##############################",
 ];
@@ -1048,6 +1121,18 @@ export const ROOMS: Record<string, RoomDef> = {
         toY: 13 * TILE,
         facing: "right",
       },
+      // Drop down into Sublayer 3 — opens once the Sovereign's Wraith is slain.
+      {
+        x: 13 * TILE,
+        y: 15 * TILE,
+        w: TILE * 4,
+        h: TILE * 3,
+        toRoom: "sl3_entry",
+        toX: 14 * TILE,
+        toY: 4 * TILE,
+        facing: "down",
+        requiresHunter: true,
+      },
     ],
     saves: [{ x: 14 * TILE, y: 13 * TILE }],
   },
@@ -1082,6 +1167,146 @@ export const ROOMS: Record<string, RoomDef> = {
         facing: "left",
       },
     ],
+  },
+  // ─── Sublayer 3 ───────────────────────────────────────────────────────────
+  sl3_entry: {
+    id: "sl3_entry",
+    name: "The Sunken Wound",
+    sublayer: 3,
+    tiles: parseTiles(sl3EntryRows),
+    enemies: [
+      {
+        kind: "wraith",
+        x: 8 * TILE,
+        y: 8 * TILE,
+        patrolMin: 4 * TILE,
+        patrolMax: 12 * TILE,
+      },
+      {
+        kind: "wraith",
+        x: 20 * TILE,
+        y: 8 * TILE,
+        patrolMin: 16 * TILE,
+        patrolMax: 24 * TILE,
+      },
+    ],
+    pickups: [],
+    doors: [
+      // Right to sl3_corridor
+      {
+        x: 29 * TILE,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl3_corridor",
+        toX: 2 * TILE,
+        toY: 14 * TILE,
+        facing: "right",
+      },
+      // Return up to sl2_hub bottom
+      {
+        x: 13 * TILE,
+        y: 0,
+        w: TILE * 4,
+        h: TILE * 2,
+        toRoom: "sl2_hub",
+        toX: 14 * TILE,
+        toY: 13 * TILE,
+        facing: "up",
+      },
+    ],
+    saves: [{ x: 20 * TILE, y: 15 * TILE - 4 }],
+  },
+  sl3_corridor: {
+    id: "sl3_corridor",
+    name: "Veins of the Deep",
+    sublayer: 3,
+    tiles: parseTiles(sl3CorridorRows),
+    enemies: [
+      {
+        kind: "bat",
+        x: 6 * TILE,
+        y: 5 * TILE,
+        patrolMin: 3 * TILE,
+        patrolMax: 10 * TILE,
+      },
+      {
+        kind: "wraith",
+        x: 16 * TILE,
+        y: 8 * TILE,
+        patrolMin: 12 * TILE,
+        patrolMax: 20 * TILE,
+      },
+      {
+        kind: "turret",
+        x: 25 * TILE,
+        y: 14 * TILE,
+        hp: 4,
+      },
+    ],
+    pickups: [],
+    doors: [
+      // Left back to sl3_entry
+      {
+        x: 0,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl3_entry",
+        toX: 27 * TILE,
+        toY: 14 * TILE,
+        facing: "left",
+      },
+      // Right to sl3_boss
+      {
+        x: 29 * TILE,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl3_boss",
+        toX: 2 * TILE,
+        toY: 14 * TILE,
+        facing: "right",
+      },
+    ],
+  },
+  sl3_boss: {
+    id: "sl3_boss",
+    name: "The Ancient Terror",
+    sublayer: 3,
+    tiles: parseTiles(sl3BossRows),
+    enemies: [
+      {
+        kind: "kraid",
+        x: 11 * TILE,
+        y: 10 * TILE,
+        hp: 48,
+      },
+    ],
+    pickups: [
+      // Pierce shard — must be collected before the player can harm Kraid.
+      {
+        kind: "ability",
+        ability: "pierce",
+        x: 3 * TILE,
+        y: 15 * TILE - 4,
+        id: "pierce-sl3",
+      },
+    ],
+    doors: [
+      // Left back to sl3_corridor
+      {
+        x: 0,
+        y: 14 * TILE,
+        w: TILE,
+        h: TILE * 2,
+        toRoom: "sl3_corridor",
+        toX: 27 * TILE,
+        toY: 14 * TILE,
+        facing: "left",
+      },
+    ],
+    saves: [{ x: 3 * TILE, y: 8 * TILE - 4 }],
   },
 };
 

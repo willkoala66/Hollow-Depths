@@ -14,6 +14,8 @@ export interface InputState {
   pause: boolean;
   pausePressed: boolean;
   phantom: boolean;
+  parry: boolean;
+  parryPressed: boolean;
 }
 
 export function createInputState(): InputState {
@@ -33,6 +35,8 @@ export function createInputState(): InputState {
     pause: false,
     pausePressed: false,
     phantom: false,
+    parry: false,
+    parryPressed: false,
   };
 }
 
@@ -44,6 +48,7 @@ const KEY_MAP: Record<string, (keyof InputState)[]> = {
   KeyZ: ["phantom"],
   KeyX: ["dash"],
   KeyC: ["shoot"],
+  KeyV: ["parry"],
   Escape: ["pause"],
 };
 
@@ -78,7 +83,6 @@ export function attachInput(state: InputState): () => void {
     if (!actions) return;
     held.delete(e.code);
     for (const action of actions) {
-      // Only release if no other held key still maps to this action
       let stillHeld = false;
       for (const code of held) {
         const otherActions = KEY_MAP[code];
@@ -105,6 +109,7 @@ export function attachInput(state: InputState): () => void {
     state.interact = false;
     state.pause = false;
     state.phantom = false;
+    state.parry = false;
   };
 
   window.addEventListener("keydown", onDown);
@@ -124,4 +129,5 @@ export function clearPressed(state: InputState) {
   state.shootPressed = false;
   state.interactPressed = false;
   state.pausePressed = false;
+  state.parryPressed = false;
 }

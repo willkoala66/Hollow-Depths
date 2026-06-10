@@ -15,6 +15,8 @@ import {
   MAX_FALL,
   MAX_HP,
   MOVE_SPEED,
+  PARRY_COOLDOWN,
+  PARRY_DURATION,
   PLAYER_H,
   PLAYER_W,
   SHOOT_COOLDOWN,
@@ -54,6 +56,8 @@ export interface Player {
   phantomActive: boolean;
   phantomMeter: number;
   phantomCooldown: number;
+  parryTimer: number;
+  parryCooldown: number;
 }
 
 export function createPlayer(spawnRoom: string, x: number, y: number): Player {
@@ -84,6 +88,7 @@ export function createPlayer(spawnRoom: string, x: number, y: number): Player {
       blast: true,
       pierce: false,
       phantom: false,
+      parry: false,
     },
     collectedPickups: new Set(),
     alive: true,
@@ -96,6 +101,8 @@ export function createPlayer(spawnRoom: string, x: number, y: number): Player {
     phantomActive: false,
     phantomMeter: 240,
     phantomCooldown: 0,
+    parryTimer: 0,
+    parryCooldown: 0,
   };
 }
 
@@ -129,5 +136,7 @@ export {
   MAX_FALL,
   MAX_HP,
   MOVE_SPEED,
+  PARRY_COOLDOWN,
+  PARRY_DURATION,
   SHOOT_COOLDOWN,
 };

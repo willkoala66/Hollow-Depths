@@ -141,10 +141,11 @@ function PauseOverlay({
         <p className="pause-title">Paused</p>
         <div className="pause-controls">
           <Control label="Move" keys={["←", "→"]} />
-          <Control label="Jump" keys={["↑"]} />
+          <Control label="Jump" keys={["↑", "Z"]} />
           <Control label="Dash" keys={["X"]} />
           <Control label="Strike" keys={["C"]} />
           <Control label="Phantom Veil" keys={["Z (hold)"]} />
+          <Control label="Parry" keys={["V"]} />
           <Control label="Pause" keys={["Esc"]} />
         </div>
         <div className="pause-actions">
@@ -196,6 +197,53 @@ function QuitConfirmModal({
   );
 }
 
+const CHANGELOG = [
+  { version: "v0.4", date: "June 2026", notes: [
+    "Sublayer 3 — The Sunken Wound: three rooms, Kraid boss (true ending)",
+    "Phantom Veil now hides player from non-boss enemies and turrets",
+    "Hunter AI now jumps over platform obstacles",
+    "New ability: Void Parry (V) — reflect projectiles, stun enemies",
+    "HUD: pierce icon merged into blast icon (golden when pierce active)",
+    "HUD: cooldown overlays on dash and blast/parry icons",
+    "Defeating Hunter opens SL3 portal; Kraid = true ending",
+  ]},
+  { version: "v0.3", date: "May 2026", notes: [
+    "Sublayer 2 — The Hollow Labyrinth: 6 rooms, Phantom Veil, Hunter",
+    "Sovereign defeat removes Pierce Shard and spawns Hunter",
+    "Hunter tracks player via BFS room adjacency; only pierce damages it",
+  ]},
+  { version: "v0.2", date: "April 2026", notes: [
+    "Ember Sovereign boss in Sanctum (Sublayer 1)",
+    "Pierce Shard ability — piercing shots, boss armor bypass",
+    "Save shrines, Heart Vessels, leaderboard",
+  ]},
+  { version: "v0.1", date: "March 2026", notes: [
+    "Initial release: 10 rooms, Hollow boss, double jump, dash, soul shard",
+  ]},
+];
+
+function useCountdown(target: Date) {
+  const [timeStr, setTimeStr] = useState("");
+  useEffect(() => {
+    const tick = () => {
+      const now = Date.now();
+      const diff = target.getTime() - now;
+      if (diff <= 0) { setTimeStr("LAUNCHED"); return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeStr(`${d}d ${h}h ${m}m ${s}s`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [target]);
+  return timeStr;
+}
+
+const LAUNCH_DATE = new Date("2026-08-01T00:00:00Z");
+
 function TitleScreen({
   onStart,
   onLeaderboard,
@@ -203,8 +251,15 @@ function TitleScreen({
   onStart: () => void;
   onLeaderboard: () => void;
 }) {
+  const [showChangelog, setShowChangelog] = useState(false);
+  const countdown = useCountdown(LAUNCH_DATE);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (showChangelog) {
+        if (e.code === "Escape") { e.preventDefault(); setShowChangelog(false); }
+        return;
+      }
       if (e.code === "KeyZ" || e.code === "Enter") {
         e.preventDefault();
         onStart();
@@ -212,16 +267,25 @@ function TitleScreen({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onStart]);
+  }, [onStart, showChangelog]);
 
   return (
     <div className="title-overlay">
+      {/* Countdown — top right */}
+      <div className="title-countdown">
+        <span className="title-countdown-label">FULL RELEASE IN</span>
+        <span className="title-countdown-time">{countdown}</span>
+      </div>
+
       <div className="title-stack">
-        <p className="title-pretitle">A descent through two sublayers</p>
+        <p className="title-pretitle">A descent through three sublayers</p>
         <h1 className="title-name">Hollow Depths</h1>
         <p className="title-subtitle">Sublayer 1: ten chambers, a sleeping throne.</p>
         <p className="title-subtitle" style={{ opacity: 0.65, marginTop: -8 }}>
           Sublayer 2: the wraith you woke is hunting you.
+        </p>
+        <p className="title-subtitle" style={{ opacity: 0.5, marginTop: -8 }}>
+          Sublayer 3: something older stirs below.
         </p>
         <div className="title-btn-row">
           <button onClick={onStart} className="title-start">
@@ -233,14 +297,39 @@ function TitleScreen({
         </div>
         <div className="title-controls">
           <Control label="Move" keys={["←", "→"]} />
-          <Control label="Jump" keys={["↑"]} />
+          <Control label="Jump" keys={["↑", "Z"]} />
           <Control label="Dash" keys={["X"]} />
           <Control label="Strike" keys={["C"]} />
           <Control label="Phantom Veil" keys={["Z (hold)"]} />
+          <Control label="Parry" keys={["V"]} />
           <Control label="Pause" keys={["Esc"]} />
         </div>
         <p className="title-hint">Click the canvas first if keys do nothing.</p>
       </div>
+
+      {/* Updates button — bottom left */}
+      <button className="title-updates-btn" onClick={() => setShowChangelog(true)}>
+        UPDATES
+      </button>
+
+      {showChangelog && (
+        <div className="changelog-modal-bg" onClick={() => setShowChangelog(false)}>
+          <div className="changelog-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="changelog-title">Update Log</h3>
+            {CHANGELOG.map((entry) => (
+              <div key={entry.version} className="changelog-entry">
+                <p className="changelog-ver">{entry.version} <span className="changelog-date">— {entry.date}</span></p>
+                <ul className="changelog-notes">
+                  {entry.notes.map((n) => <li key={n}>{n}</li>)}
+                </ul>
+              </div>
+            ))}
+            <button className="title-lb-btn" onClick={() => setShowChangelog(false)}>
+              CLOSE
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -270,7 +359,7 @@ function VictoryScreen({
   const [name, setName] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [placement, setPlacement] = useState<{ rank: number; total: number } | null>(null);
-  const runFrames = game.hunterDefeatedTime ?? game.gameTime;
+  const runFrames = game.kraidDefeatedTime ?? game.gameTime;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -305,7 +394,7 @@ function VictoryScreen({
     <div className="title-overlay">
       <div className="victory-panel">
         <p className="victory-pre">TRUE ENDING</p>
-        <h2 className="victory-title">The Wraith is Unmade</h2>
+        <h2 className="victory-title">The Ancient Terror is Slain</h2>
         <div className="victory-stats">
           <StatRow label="Final Time" value={formatFrames(runFrames)} highlight />
           <StatRow label="Deaths" value={String(game.deaths)} />
@@ -313,7 +402,7 @@ function VictoryScreen({
           <StatRow label="Sovereign slain at" value={formatFrames(game.sovereignDefeatedTime)} />
           <StatRow
             label="HP remaining"
-            value={`${game.playerHpAtHunter} / ${game.player.maxHp}`}
+            value={`${game.player.hp} / ${game.player.maxHp}`}
           />
         </div>
 

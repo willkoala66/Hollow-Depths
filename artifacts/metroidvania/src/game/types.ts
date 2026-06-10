@@ -7,11 +7,12 @@ export type AbilityKey =
   | "dash"
   | "blast"
   | "pierce"
-  | "phantom";
+  | "phantom"
+  | "parry";
 
 export type Abilities = Record<AbilityKey, boolean>;
 
-export type EnemyKind = "slime" | "bat" | "turret" | "boss" | "wraith" | "sovereign";
+export type EnemyKind = "slime" | "bat" | "turret" | "boss" | "wraith" | "sovereign" | "kraid";
 
 export interface EnemySpawn {
   kind: EnemyKind;
@@ -42,6 +43,7 @@ export interface DoorSpawn {
   requires?: AbilityKey | AbilityKey[];
   requiresBoss?: boolean;
   requiresSovereign?: boolean;
+  requiresHunter?: boolean;
 }
 
 export interface SaveSpawn {
@@ -58,7 +60,7 @@ export interface RoomDef {
   pickups: PickupSpawn[];
   doors: DoorSpawn[];
   saves?: SaveSpawn[];
-  sublayer?: 1 | 2;
+  sublayer?: 1 | 2 | 3;
 }
 
 export type Tile = 0 | 1 | 2;

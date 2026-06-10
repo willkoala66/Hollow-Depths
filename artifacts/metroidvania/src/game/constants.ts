@@ -29,6 +29,9 @@ export const PHANTOM_RECHARGE = 0.45;
 export const PHANTOM_MOVE_MULT = 0.45;
 export const PHANTOM_MIN_RECHARGE = 60;
 
+export const PARRY_DURATION = 12;
+export const PARRY_COOLDOWN = 45;
+
 export const PLAYER_W = 22;
 export const PLAYER_H = 30;
 export const MAX_HP = 5;

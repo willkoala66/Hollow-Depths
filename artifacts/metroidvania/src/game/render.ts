@@ -1,4 +1,15 @@
-import { COLORS, PHANTOM_MAX, ROOM_H, ROOM_W, TILE, VIEW_H, VIEW_W } from "./constants";
+import {
+  COLORS,
+  DASH_COOLDOWN,
+  PARRY_COOLDOWN,
+  PHANTOM_MAX,
+  ROOM_H,
+  ROOM_W,
+  SHOOT_COOLDOWN,
+  TILE,
+  VIEW_H,
+  VIEW_W,
+} from "./constants";
 import type { Enemy } from "./enemies";
 import { currentRoom, type GameState, type Hunter } from "./game";
 import type { Player } from "./player";
@@ -6,7 +17,7 @@ import type { Player } from "./player";
 interface MapCell {
   gx: number;
   gy: number;
-  sublayer: 1 | 2;
+  sublayer: 1 | 2 | 3;
 }
 
 const MAP_LAYOUT: Record<string, MapCell> = {
@@ -28,6 +39,10 @@ const MAP_LAYOUT: Record<string, MapCell> = {
   sl2_west: { gx: 0, gy: 1, sublayer: 2 },
   sl2_hub: { gx: 1, gy: 1, sublayer: 2 },
   sl2_east: { gx: 2, gy: 1, sublayer: 2 },
+  // Sublayer 3 — The Sunken Wound
+  sl3_entry: { gx: 0, gy: 0, sublayer: 3 },
+  sl3_corridor: { gx: 1, gy: 0, sublayer: 3 },
+  sl3_boss: { gx: 2, gy: 0, sublayer: 3 },
 };
 
 const ABILITY_NAMES: Record<string, string> = {
@@ -36,8 +51,10 @@ const ABILITY_NAMES: Record<string, string> = {
   blast: "Soul Shard",
   pierce: "Pierce Shard",
   phantom: "Phantom Veil",
+  parry: "Void Parry",
   vessel: "Heart Vessel",
   pierceLost: "Pierce Shard Fades",
+  pierceLostHunter: "Pierce Shard Dissolves",
 };
 const ABILITY_DESC: Record<string, string> = {
   doubleJump: "Press jump again in the air",
@@ -45,13 +62,16 @@ const ABILITY_DESC: Record<string, string> = {
   blast: "Press C / J to fire energy",
   pierce: "Shots punch through enemies & armor",
   phantom: "Hold Z / F to fade — slip past the Hunter",
+  parry: "Press V to deflect — reflect projectiles, stun enemies",
   vessel: "Maximum vitality increased",
   pierceLost: "The Sovereign's death has unbound your shard…",
+  pierceLostHunter: "The killing blow unmakes the shard… The Wound stirs below.",
 };
 
-const SUBLAYER_TITLES: Record<1 | 2, { name: string; subtitle: string }> = {
+const SUBLAYER_TITLES: Record<1 | 2 | 3, { name: string; subtitle: string }> = {
   1: { name: "SUBLAYER 1", subtitle: "Hollow Depths" },
   2: { name: "SUBLAYER 2", subtitle: "The Hollow Labyrinth" },
+  3: { name: "SUBLAYER 3", subtitle: "The Sunken Wound" },
 };
 
 export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
@@ -76,7 +96,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
   drawBackground(ctx, g);
 
   // Tiles
-  const sublayer = (def.sublayer ?? 1) as 1 | 2;
+  const sublayer = (def.sublayer ?? 1) as 1 | 2 | 3;
   for (let y = 0; y < ROOM_H; y++) {
     for (let x = 0; x < ROOM_W; x++) {
       const t = def.tiles[y][x];
@@ -178,7 +198,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
     const a = g.abilityToast;
     const t = a.timer;
     const alpha = t > 230 ? (260 - t) / 30 : t < 30 ? t / 30 : 1;
-    const lost = a.ability === "pierceLost";
+    const lost = a.ability === "pierceLost" || a.ability === "pierceLostHunter";
     drawAbilityToast(
       ctx,
       ABILITY_NAMES[a.ability] ?? a.ability,
@@ -220,20 +240,20 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
     const t = Math.min(1, g.victoryTimer / 60);
     ctx.fillStyle = `rgba(5, 2, 14, ${0.85 * t})`;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-    ctx.fillStyle = `rgba(232, 228, 255, ${t})`;
+    ctx.fillStyle = `rgba(255, 220, 160, ${t})`;
     ctx.font = "bold 56px serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("THE HOLLOW IS QUIET", VIEW_W / 2, VIEW_H / 2 - 20);
+    ctx.fillText("THE WOUND IS SEALED", VIEW_W / 2, VIEW_H / 2 - 20);
     ctx.font = "18px sans-serif";
-    ctx.fillStyle = `rgba(160, 112, 255, ${t})`;
+    ctx.fillStyle = `rgba(255, 160, 80, ${t})`;
     ctx.fillText(
-      "You have unmade the throne. The depths exhale.",
+      "The Ancient Terror sleeps. The deep is still.",
       VIEW_W / 2,
       VIEW_H / 2 + 28,
     );
     ctx.font = "12px sans-serif";
-    ctx.fillStyle = `rgba(120, 100, 160, ${t})`;
+    ctx.fillStyle = `rgba(180, 120, 80, ${t})`;
     ctx.fillText("Refresh to descend again.", VIEW_W / 2, VIEW_H / 2 + 64);
   }
 }
@@ -241,7 +261,11 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
 function drawBackground(ctx: CanvasRenderingContext2D, g: GameState) {
   const sl = currentRoom(g).def.sublayer ?? 1;
   const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-  if (sl === 2) {
+  if (sl === 3) {
+    grad.addColorStop(0, "#140508");
+    grad.addColorStop(0.5, "#0a0203");
+    grad.addColorStop(1, "#050102");
+  } else if (sl === 2) {
     grad.addColorStop(0, "#0a0518");
     grad.addColorStop(0.5, "#04020c");
     grad.addColorStop(1, "#020108");
@@ -254,7 +278,12 @@ function drawBackground(ctx: CanvasRenderingContext2D, g: GameState) {
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
   // Distant pillars (parallax-ish, static per room)
-  ctx.fillStyle = sl === 2 ? "rgba(70, 30, 100, 0.55)" : "rgba(40, 22, 70, 0.55)";
+  ctx.fillStyle =
+    sl === 3
+      ? "rgba(100, 30, 20, 0.55)"
+      : sl === 2
+        ? "rgba(70, 30, 100, 0.55)"
+        : "rgba(40, 22, 70, 0.55)";
   const seed = hash(g.currentRoomId);
   for (let i = 0; i < 6; i++) {
     const x = ((seed * (i + 1) * 73) % (VIEW_W - 80)) + 20;
@@ -263,7 +292,12 @@ function drawBackground(ctx: CanvasRenderingContext2D, g: GameState) {
     ctx.fillRect(x, VIEW_H - h, w, h);
   }
   // Floating motes
-  ctx.fillStyle = sl === 2 ? "rgba(255, 80, 120, 0.16)" : "rgba(160, 112, 255, 0.18)";
+  ctx.fillStyle =
+    sl === 3
+      ? "rgba(255, 120, 40, 0.18)"
+      : sl === 2
+        ? "rgba(255, 80, 120, 0.16)"
+        : "rgba(160, 112, 255, 0.18)";
   for (let i = 0; i < 30; i++) {
     const t = g.gameTime * 0.4 + i * 30;
     const x = ((seed * 17 + i * 53) % VIEW_W);
@@ -274,6 +308,12 @@ function drawBackground(ctx: CanvasRenderingContext2D, g: GameState) {
   if (sl === 2) {
     const pulse = 0.05 + Math.sin(g.gameTime * 0.04) * 0.04;
     ctx.fillStyle = `rgba(180, 40, 60, ${pulse})`;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+  // Ancient heat shimmer in Sublayer 3
+  if (sl === 3) {
+    const pulse = 0.04 + Math.sin(g.gameTime * 0.06) * 0.03;
+    ctx.fillStyle = `rgba(200, 60, 10, ${pulse})`;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   }
 }
@@ -289,13 +329,16 @@ function drawWallTile(
   cx: number,
   cy: number,
   tiles: number[][],
-  sublayer: 1 | 2 = 1,
+  sublayer: 1 | 2 | 3 = 1,
 ) {
   const x = cx * TILE;
   const y = cy * TILE;
-  const wall = sublayer === 2 ? COLORS.sl2Wall : COLORS.wall;
-  const edge = sublayer === 2 ? COLORS.sl2WallEdge : COLORS.wallEdge;
-  const hi = sublayer === 2 ? COLORS.sl2WallHi : COLORS.wallHighlight;
+  const wall =
+    sublayer === 3 ? "#2a0808" : sublayer === 2 ? COLORS.sl2Wall : COLORS.wall;
+  const edge =
+    sublayer === 3 ? "#4a1010" : sublayer === 2 ? COLORS.sl2WallEdge : COLORS.wallEdge;
+  const hi =
+    sublayer === 3 ? "#6a1818" : sublayer === 2 ? COLORS.sl2WallHi : COLORS.wallHighlight;
   ctx.fillStyle = wall;
   ctx.fillRect(x, y, TILE, TILE);
 
@@ -319,7 +362,8 @@ function drawWallTile(
     ctx.fillRect(x + TILE - 2, y, 2, TILE);
   }
   // Brick texture
-  ctx.fillStyle = sublayer === 2 ? "rgba(0,0,0,0.32)" : "rgba(0,0,0,0.18)";
+  ctx.fillStyle =
+    sublayer === 3 ? "rgba(0,0,0,0.4)" : sublayer === 2 ? "rgba(0,0,0,0.32)" : "rgba(0,0,0,0.18)";
   ctx.fillRect(x + 6, y + 10, 8, 2);
   ctx.fillRect(x + 18, y + 22, 6, 2);
 }
@@ -361,11 +405,14 @@ function drawDoor(
   const lockedAbility = reqs.some((r) => !g.player.abilities[r as never]);
   const lockedBoss = !!d.requiresBoss && !g.bossDefeated;
   const lockedSov = !!d.requiresSovereign && !g.sovereignDefeated;
-  const locked = lockedAbility || lockedBoss || lockedSov;
+  const lockedHunter = !!(d as { requiresHunter?: boolean }).requiresHunter && !g.hunterDefeated;
+  const locked = lockedAbility || lockedBoss || lockedSov || lockedHunter;
   const color = locked
-    ? lockedSov
-      ? "#1a0408"
-      : COLORS.doorLocked
+    ? lockedHunter
+      ? "#1a0800"
+      : lockedSov
+        ? "#1a0408"
+        : COLORS.doorLocked
     : COLORS.door;
   ctx.fillStyle = color;
   ctx.globalAlpha = pulse * (locked ? 0.5 : 0.9);
@@ -660,6 +707,50 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, time: number) {
       ctx.fillRect(e.x + e.w - 9 + wex, e.y + e.h / 2 - 1 + drift, 2, 2);
       break;
     }
+    case "kraid": {
+      const flash2 = e.hitFlash > 0;
+      const kpulse = Math.sin(time * 0.06) * 3;
+      // Body — massive armored hulk
+      ctx.fillStyle = flash2 ? "#ffffff" : "#3a1808";
+      ctx.fillRect(e.x, e.y, e.w, e.h);
+      // Armor plates
+      ctx.fillStyle = flash2 ? "#ffff80" : "#7a3010";
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 4; col++) {
+          ctx.fillRect(
+            e.x + 8 + col * 46,
+            e.y + 8 + row * 50,
+            40,
+            42,
+          );
+        }
+      }
+      // Spines on top
+      ctx.fillStyle = flash2 ? "#ffffff" : "#c06020";
+      for (let i = 0; i < 5; i++) {
+        const sx = e.x + 16 + i * 38;
+        const sh = 24 + (i % 2) * 12;
+        ctx.beginPath();
+        ctx.moveTo(sx, e.y);
+        ctx.lineTo(sx + 14, e.y - sh + kpulse * 0.3);
+        ctx.lineTo(sx + 28, e.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Eyes (pair)
+      ctx.fillStyle = "#1a0408";
+      ctx.fillRect(e.x + 28, e.y + 24, 18, 14);
+      ctx.fillRect(e.x + e.w - 46, e.y + 24, 18, 14);
+      ctx.fillStyle = flash2 ? "#ffffff" : e.state === "telegraph" ? "#ffffaa" : "#ff6010";
+      ctx.fillRect(e.x + 31, e.y + 27, 10, 8);
+      ctx.fillRect(e.x + e.w - 43, e.y + 27, 10, 8);
+      // Mouth grate
+      ctx.fillStyle = "#1a0408";
+      ctx.fillRect(e.x + 40, e.y + e.h - 40, e.w - 80, 22);
+      // HP pips above
+      drawHpPips(ctx, e);
+      break;
+    }
     case "sovereign":
     case "boss": {
       const isSov = e.kind === "sovereign";
@@ -791,14 +882,26 @@ function drawHUD(ctx: CanvasRenderingContext2D, g: GameState) {
     }
   }
 
-  // Ability icons
+  // Ability icons (no separate pierce icon; blast turns golden when pierce active)
   const ax = 16;
   const ay = 44;
   drawAbilityIcon(ctx, ax, ay, "doubleJump", p.abilities.doubleJump);
-  drawAbilityIcon(ctx, ax + 38, ay, "dash", p.abilities.dash);
-  drawAbilityIcon(ctx, ax + 76, ay, "blast", p.abilities.blast);
-  drawAbilityIcon(ctx, ax + 114, ay, "pierce", p.abilities.pierce);
-  drawAbilityIcon(ctx, ax + 152, ay, "phantom", p.abilities.phantom);
+  drawAbilityIcon(ctx, ax + 38, ay, "dash", p.abilities.dash, {
+    cooldown: p.dashCooldown,
+    cooldownMax: DASH_COOLDOWN,
+  });
+  drawAbilityIcon(ctx, ax + 76, ay, "blast", p.abilities.blast, {
+    golden: p.abilities.pierce,
+    cooldown: p.shootCooldown,
+    cooldownMax: SHOOT_COOLDOWN,
+  });
+  drawAbilityIcon(ctx, ax + 114, ay, "phantom", p.abilities.phantom);
+  if (p.abilities.parry) {
+    drawAbilityIcon(ctx, ax + 152, ay, "parry", true, {
+      cooldown: p.parryCooldown,
+      cooldownMax: PARRY_COOLDOWN,
+    });
+  }
 
   // Phantom meter (under the ability row, only once unlocked)
   if (p.abilities.phantom) {
@@ -857,19 +960,23 @@ function drawHUD(ctx: CanvasRenderingContext2D, g: GameState) {
   // Boss HP bar
   const room = currentRoom(g);
   for (const e of room.enemies) {
-    if ((e.kind === "boss" || e.kind === "sovereign") && e.alive) {
+    if ((e.kind === "boss" || e.kind === "sovereign" || e.kind === "kraid") && e.alive) {
       const isSov = e.kind === "sovereign";
+      const isKraid = e.kind === "kraid";
       const w = 360;
-      const h = 14;
+      const h = isKraid ? 18 : 14;
       const x = (VIEW_W - w) / 2;
       const y = VIEW_H - 36;
       ctx.fillStyle = "rgba(0,0,0,0.7)";
       ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
-      ctx.fillStyle = isSov ? "#3a1808" : "#3a0818";
+      ctx.fillStyle = isKraid ? "#3a1000" : isSov ? "#3a1808" : "#3a0818";
       ctx.fillRect(x, y, w, h);
       const pct = Math.max(0, e.hp / e.maxHp);
       const grad = ctx.createLinearGradient(x, y, x + w, y);
-      if (isSov) {
+      if (isKraid) {
+        grad.addColorStop(0, "#c06020");
+        grad.addColorStop(1, "#ff9040");
+      } else if (isSov) {
         grad.addColorStop(0, "#ff5020");
         grad.addColorStop(1, "#ffb060");
       } else {
@@ -879,11 +986,11 @@ function drawHUD(ctx: CanvasRenderingContext2D, g: GameState) {
       ctx.fillStyle = grad;
       ctx.fillRect(x, y, w * pct, h);
       ctx.fillStyle = COLORS.text;
-      ctx.font = "bold 11px sans-serif";
+      ctx.font = `bold ${isKraid ? 13 : 11}px sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(
-        isSov ? "THE EMBER SOVEREIGN" : "THE HOLLOW",
+        isKraid ? "THE ANCIENT TERROR" : isSov ? "THE EMBER SOVEREIGN" : "THE HOLLOW",
         VIEW_W / 2,
         y - 12,
       );
@@ -928,10 +1035,17 @@ function drawAbilityIcon(
   y: number,
   ability: string,
   unlocked: boolean,
+  opts?: { golden?: boolean; cooldown?: number; cooldownMax?: number },
 ) {
-  ctx.fillStyle = unlocked ? "rgba(160,112,255,0.25)" : "rgba(40,30,60,0.5)";
+  const { golden = false, cooldown = 0, cooldownMax = 1 } = opts ?? {};
+  const bgColor = golden && unlocked
+    ? "rgba(80,60,0,0.5)"
+    : unlocked
+      ? "rgba(160,112,255,0.25)"
+      : "rgba(40,30,60,0.5)";
+  ctx.fillStyle = bgColor;
   ctx.fillRect(x, y, 30, 30);
-  ctx.strokeStyle = unlocked ? "#a070ff" : "#3a2a50";
+  ctx.strokeStyle = golden && unlocked ? "#ffd060" : unlocked ? "#a070ff" : "#3a2a50";
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, 29, 29);
   ctx.fillStyle = unlocked ? "#e8e4ff" : "#3a2a50";
@@ -943,17 +1057,31 @@ function drawAbilityIcon(
       ? "▲▲"
       : ability === "dash"
         ? "»"
-        : ability === "pierce"
-          ? "→✦"
-          : ability === "phantom"
-            ? "◌"
+        : ability === "phantom"
+          ? "◌"
+          : ability === "parry"
+            ? "⟲"
             : "✦";
-  if (ability === "pierce" && unlocked) {
+  if (golden && unlocked) {
     ctx.fillStyle = "#ffd060";
   } else if (ability === "phantom" && unlocked) {
     ctx.fillStyle = "#90c0ff";
+  } else if (ability === "parry" && unlocked) {
+    ctx.fillStyle = "#ffffff";
   }
   ctx.fillText(label, x + 15, y + 16);
+  // Cooldown overlay arc
+  if (unlocked && cooldown > 0 && cooldownMax > 0) {
+    const frac = cooldown / cooldownMax;
+    const cx2 = x + 15;
+    const cy2 = y + 15;
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.beginPath();
+    ctx.moveTo(cx2, cy2);
+    ctx.arc(cx2, cy2, 16, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
+    ctx.closePath();
+    ctx.fill();
+  }
 }
 
 function drawMinimap(ctx: CanvasRenderingContext2D, g: GameState) {
@@ -973,11 +1101,12 @@ function drawMinimap(ctx: CanvasRenderingContext2D, g: GameState) {
   const y = 16;
   ctx.fillStyle = "rgba(8,2,18,0.7)";
   ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = sl === 2 ? "rgba(255,80,120,0.55)" : "rgba(160,112,255,0.5)";
+  ctx.strokeStyle =
+    sl === 3 ? "rgba(255,120,40,0.55)" : sl === 2 ? "rgba(255,80,120,0.55)" : "rgba(160,112,255,0.5)";
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   // Sublayer label
-  ctx.fillStyle = sl === 2 ? "#ff80a0" : "#a070ff";
+  ctx.fillStyle = sl === 3 ? "#ff9040" : sl === 2 ? "#ff80a0" : "#a070ff";
   ctx.font = "bold 9px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
@@ -990,12 +1119,18 @@ function drawMinimap(ctx: CanvasRenderingContext2D, g: GameState) {
     const current = id === g.currentRoomId;
     const hunterHere = g.hunter && g.hunter.roomId === id;
     ctx.fillStyle = current
-      ? sl === 2
-        ? "#ff80a0"
-        : "#a070ff"
+      ? sl === 3
+        ? "#ff9040"
+        : sl === 2
+          ? "#ff80a0"
+          : "#a070ff"
       : visited
-        ? "rgba(82,48,120,0.7)"
-        : "rgba(40,30,60,0.4)";
+        ? sl === 3
+          ? "rgba(100,40,10,0.7)"
+          : "rgba(82,48,120,0.7)"
+        : sl === 3
+          ? "rgba(50,20,10,0.4)"
+          : "rgba(40,30,60,0.4)";
     ctx.fillRect(cx, cy, cell, cell);
     if (hunterHere) {
       ctx.fillStyle = "rgba(255,40,60,0.85)";
