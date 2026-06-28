@@ -14,6 +14,7 @@ const insertSchema = z.object({
   playerHpAtHollow: z.number().int().min(0).nullable().optional(),
   playerHpAtSovereign: z.number().int().min(0).nullable().optional(),
   playerHpAtHunter: z.number().int().min(0).nullable().optional(),
+  hunterFrames: z.number().int().positive().nullable().optional(),
 });
 
 router.get("/leaderboard", async (req, res) => {

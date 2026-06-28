@@ -1,10 +1,33 @@
-import { ROOM_H, ROOM_W, TILE } from "./constants";
+import { ROOM_H, ROOM_W, TALL_ROOM_H, TILE } from "./constants";
 import type { RoomDef } from "./types";
 
 function parseTiles(rows: string[]): number[][] {
   if (rows.length !== ROOM_H) {
     throw new Error(
       `Room must have ${ROOM_H} rows, got ${rows.length}`,
+    );
+  }
+  return rows.map((row, y) => {
+    if (row.length !== ROOM_W) {
+      throw new Error(
+        `Row ${y} must be ${ROOM_W} cols, got ${row.length}: "${row}"`,
+      );
+    }
+    const out: number[] = new Array(ROOM_W);
+    for (let x = 0; x < ROOM_W; x++) {
+      const c = row[x];
+      if (c === "#") out[x] = 1;
+      else if (c === "^") out[x] = 2;
+      else out[x] = 0;
+    }
+    return out;
+  });
+}
+
+function parseTilesTall(rows: string[]): number[][] {
+  if (rows.length !== TALL_ROOM_H) {
+    throw new Error(
+      `Tall room must have ${TALL_ROOM_H} rows, got ${rows.length}`,
     );
   }
   return rows.map((row, y) => {
@@ -36,7 +59,7 @@ const antechamberRows = [
   "#............................#",
   "#..............####..........#",
   "#............................#",
-  "#......####..................#",
+  "#............................#",
   "#............................#",
   "#............................#",
   " ............................ ",
@@ -336,22 +359,22 @@ const sl2HubRows = [
 
 // ============================================================================
 // SUBLAYER 3 — The Sunken Wound
-// Deep beyond the Labyrinth, where something ancient and immense waits.
+// Ten rooms descending to the Ancient Terror (Kraid) — a vast wall boss.
 // ============================================================================
 
-// Entry from sl2_hub bottom. Right door to sl3_corridor.
+// SL3 Room 1: Entry. Top opening (cols 13-16) back to sl2_hub. Right door.
 const sl3EntryRows = [
-  "##############################",
-  "##############################",
+  "#############....#############",
+  "#############....#############",
   "#............................#",
   "#............................#",
-  "#....####..............####..#",
+  "#....######.........######...#",
   "#............................#",
   "#............................#",
-  "#..######........######......#",
+  "#...######.........######....#",
   "#............................#",
   "#............................#",
-  "#....####..............####..#",
+  "#....######.........######...#",
   "#............................#",
   "#............................#",
   "#............................#",
@@ -361,8 +384,8 @@ const sl3EntryRows = [
   "##############################",
 ];
 
-// Left door from sl3_entry. Right door to sl3_boss.
-const sl3CorridorRows = [
+// SL3 Room 2: Hall A — both horizontal doors.
+const sl3HallARows = [
   "##############################",
   "##############################",
   "#............................#",
@@ -370,10 +393,10 @@ const sl3CorridorRows = [
   "#....######..........######..#",
   "#............................#",
   "#............................#",
-  "#....####..........####......#",
+  "#............................#",
+  "#..######..........######....#",
   "#............................#",
   "#............................#",
-  "#..####..............####....#",
   "#............................#",
   "#............................#",
   "#............................#",
@@ -383,27 +406,200 @@ const sl3CorridorRows = [
   "##############################",
 ];
 
-// Left door from sl3_corridor. Wide open arena — platforms on both sides.
-// The Ancient Terror (Kraid) lurks at the centre bottom.
+// SL3 Room 3: Hall B — both horizontal doors.
+const sl3HallBRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#............................#",
+  "#......######....######......#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#..######............######..#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  " ............................ ",
+  " ............................ ",
+  "##############################",
+  "##############################",
+];
+
+// SL3 Room 4: Hall C — both horizontal doors.
+const sl3HallCRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#............................#",
+  "#....####..............####..#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#........######....######....#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  " ............................ ",
+  " ............................ ",
+  "##############################",
+  "##############################",
+];
+
+// SL3 Room 5: Parry Room — both doors. Void Parry ability on center platform.
+const sl3ParryRoomRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#.........######....######...#",
+  "#............................#",
+  "#............................#",
+  "#.........######....######...#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  " ............................ ",
+  " ............................ ",
+  "##############################",
+  "##############################",
+];
+
+// SL3 Room 6: Lava Hall — both doors, heavy enemy presence.
+const sl3LavaHallRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#............................#",
+  "#....######..........######..#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#..######..........######....#",
+  "#............................#",
+  "#....####..............####..#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  " ............................ ",
+  " ............................ ",
+  "##############################",
+  "##############################",
+];
+
+// SL3 Room 7: Hall D — both horizontal doors.
+const sl3HallDRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#............................#",
+  "#......######....######......#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#..######............######..#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  " ............................ ",
+  " ............................ ",
+  "##############################",
+  "##############################",
+];
+
+// SL3 Room 8: Ascent — zigzag platforms, both doors.
+const sl3AscentRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#............................#",
+  "#.######.....................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#.....................######.#",
+  "#............................#",
+  "#............................#",
+  "#.######.....................#",
+  "#............................#",
+  "#............................#",
+  " ............................ ",
+  " ............................ ",
+  "##############################",
+  "##############################",
+];
+
+// SL3 Room 9: Approach — both doors, save shrine, pierce re-grant.
+const sl3ApproachRows = [
+  "##############################",
+  "##############################",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#.......######....######.....#",
+  "#............................#",
+  "#............................#",
+  "#.......######....######.....#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  "#............................#",
+  " ............................ ",
+  " ............................ ",
+  "##############################",
+  "##############################",
+];
+
+// SL3 Room 10: Boss — tall 36-row arena. Kraid fills the right wall.
+// Left door only (rows 16-17). Camera scrolls vertically to follow player.
+// Three glowing cores: rows 8, 19, 31 (aligned with Kraid's weak spots).
 const sl3BossRows = [
-  "##############################",
-  "##############################",
-  "#............................#",
-  "#...##..................##...#",
-  "#............................#",
-  "#...########......########...#",
-  "#............................#",
-  "#............................#",
-  "#...####..............####...#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  " ............................#",
-  " ............................#",
-  "##############################",
-  "##############################",
+  "##############################",  //  0 ceiling
+  "##############################",  //  1 ceiling
+  "#............................#",  //  2
+  "#............................#",  //  3
+  "#............................#",  //  4
+  "#............................#",  //  5
+  "#............................#",  //  6
+  "#............................#",  //  7
+  "#.######.....................#",  //  8 LEFT platform — Core 1 height
+  "#............................#",  //  9
+  "#............................#",  // 10
+  "#.######.....................#",  // 11 LEFT platform — climbing step
+  "#............................#",  // 12
+  "#.........#######............#",  // 13 RIGHT platform — near door
+  "#............................#",  // 14
+  "#.........#######............#",  // 15 RIGHT platform — near door
+  " ............................#",  // 16 LEFT DOOR
+  " ............................#",  // 17 LEFT DOOR
+  "#............................#",  // 18
+  "#.######.....................#",  // 19 LEFT platform — Core 2 height
+  "#............................#",  // 20
+  "#............................#",  // 21
+  "#............................#",  // 22
+  "#............................#",  // 23
+  "#............................#",  // 24
+  "#.........#######............#",  // 25 RIGHT platform — mid step
+  "#............................#",  // 26
+  "#............................#",  // 27
+  "#............................#",  // 28
+  "#............................#",  // 29
+  "#............................#",  // 30
+  "#.######.....................#",  // 31 LEFT platform — Core 3 height
+  "#............................#",  // 32
+  "#............................#",  // 33
+  "##############################",  // 34 floor
+  "##############################",  // 35 floor
 ];
 
 // Top opening (cols 13-16) from sl2_pierce_shrine. Left opening to sl2_hub.
@@ -892,11 +1088,10 @@ export const ROOMS: Record<string, RoomDef> = {
         kind: "sovereign",
         x: 22 * TILE - 34,
         y: 14 * TILE - 36,
-        hp: 32,
+        hp: 24,
       },
     ],
     pickups: [],
-    saves: [{ x: 14 * TILE, y: 15 * TILE - 4 }],
     doors: [
       {
         x: 0,
@@ -1168,145 +1363,171 @@ export const ROOMS: Record<string, RoomDef> = {
       },
     ],
   },
-  // ─── Sublayer 3 ───────────────────────────────────────────────────────────
+  // ─── Sublayer 3 — The Sunken Wound (10 rooms) ────────────────────────────
   sl3_entry: {
     id: "sl3_entry",
     name: "The Sunken Wound",
     sublayer: 3,
     tiles: parseTiles(sl3EntryRows),
     enemies: [
-      {
-        kind: "wraith",
-        x: 8 * TILE,
-        y: 8 * TILE,
-        patrolMin: 4 * TILE,
-        patrolMax: 12 * TILE,
-      },
-      {
-        kind: "wraith",
-        x: 20 * TILE,
-        y: 8 * TILE,
-        patrolMin: 16 * TILE,
-        patrolMax: 24 * TILE,
-      },
+      { kind: "wraith", x: 8 * TILE, y: 8 * TILE, patrolMin: 3 * TILE, patrolMax: 13 * TILE },
+      { kind: "wraith", x: 20 * TILE, y: 8 * TILE, patrolMin: 15 * TILE, patrolMax: 26 * TILE },
     ],
     pickups: [],
     doors: [
-      // Right to sl3_corridor
-      {
-        x: 29 * TILE,
-        y: 14 * TILE,
-        w: TILE,
-        h: TILE * 2,
-        toRoom: "sl3_corridor",
-        toX: 2 * TILE,
-        toY: 14 * TILE,
-        facing: "right",
-      },
-      // Return up to sl2_hub bottom
-      {
-        x: 13 * TILE,
-        y: 0,
-        w: TILE * 4,
-        h: TILE * 2,
-        toRoom: "sl2_hub",
-        toX: 14 * TILE,
-        toY: 13 * TILE,
-        facing: "up",
-      },
+      { x: 29 * TILE, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_hall_a", toX: 2 * TILE, toY: 14 * TILE, facing: "right" },
+      { x: 13 * TILE, y: 0, w: TILE * 4, h: TILE * 2, toRoom: "sl2_hub", toX: 14 * TILE, toY: 13 * TILE, facing: "up" },
     ],
     saves: [{ x: 20 * TILE, y: 15 * TILE - 4 }],
   },
-  sl3_corridor: {
-    id: "sl3_corridor",
-    name: "Veins of the Deep",
+  sl3_hall_a: {
+    id: "sl3_hall_a",
+    name: "Sunken Corridor",
     sublayer: 3,
-    tiles: parseTiles(sl3CorridorRows),
+    tiles: parseTiles(sl3HallARows),
     enemies: [
-      {
-        kind: "bat",
-        x: 6 * TILE,
-        y: 5 * TILE,
-        patrolMin: 3 * TILE,
-        patrolMax: 10 * TILE,
-      },
-      {
-        kind: "wraith",
-        x: 16 * TILE,
-        y: 8 * TILE,
-        patrolMin: 12 * TILE,
-        patrolMax: 20 * TILE,
-      },
-      {
-        kind: "turret",
-        x: 25 * TILE,
-        y: 14 * TILE,
-        hp: 4,
-      },
+      { kind: "bat", x: 6 * TILE, y: 5 * TILE, patrolMin: 2 * TILE, patrolMax: 10 * TILE },
+      { kind: "bat", x: 22 * TILE, y: 5 * TILE, patrolMin: 16 * TILE, patrolMax: 27 * TILE },
+      { kind: "slime", x: 14 * TILE, y: 15 * TILE, patrolMin: 8 * TILE, patrolMax: 22 * TILE },
     ],
     pickups: [],
     doors: [
-      // Left back to sl3_entry
-      {
-        x: 0,
-        y: 14 * TILE,
-        w: TILE,
-        h: TILE * 2,
-        toRoom: "sl3_entry",
-        toX: 27 * TILE,
-        toY: 14 * TILE,
-        facing: "left",
-      },
-      // Right to sl3_boss
-      {
-        x: 29 * TILE,
-        y: 14 * TILE,
-        w: TILE,
-        h: TILE * 2,
-        toRoom: "sl3_boss",
-        toX: 2 * TILE,
-        toY: 14 * TILE,
-        facing: "right",
-      },
+      { x: 0, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_entry", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
+      { x: 29 * TILE, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_hall_b", toX: 2 * TILE, toY: 14 * TILE, facing: "right" },
     ],
+  },
+  sl3_hall_b: {
+    id: "sl3_hall_b",
+    name: "Crumbling Gallery",
+    sublayer: 3,
+    tiles: parseTiles(sl3HallBRows),
+    enemies: [
+      { kind: "wraith", x: 7 * TILE, y: 8 * TILE, patrolMin: 3 * TILE, patrolMax: 12 * TILE },
+      { kind: "wraith", x: 20 * TILE, y: 8 * TILE, patrolMin: 15 * TILE, patrolMax: 26 * TILE },
+      { kind: "turret", x: 14 * TILE, y: 14 * TILE, hp: 4 },
+    ],
+    pickups: [],
+    doors: [
+      { x: 0, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_hall_a", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
+      { x: 29 * TILE, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_hall_c", toX: 2 * TILE, toY: 14 * TILE, facing: "right" },
+    ],
+  },
+  sl3_hall_c: {
+    id: "sl3_hall_c",
+    name: "The Wound Widens",
+    sublayer: 3,
+    tiles: parseTiles(sl3HallCRows),
+    enemies: [
+      { kind: "bat", x: 5 * TILE, y: 4 * TILE, patrolMin: 2 * TILE, patrolMax: 9 * TILE },
+      { kind: "bat", x: 24 * TILE, y: 4 * TILE, patrolMin: 19 * TILE, patrolMax: 27 * TILE },
+      { kind: "slime", x: 14 * TILE, y: 15 * TILE, patrolMin: 9 * TILE, patrolMax: 21 * TILE },
+    ],
+    pickups: [],
+    doors: [
+      { x: 0, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_hall_b", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
+      { x: 29 * TILE, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_parry_room", toX: 2 * TILE, toY: 14 * TILE, facing: "right" },
+    ],
+  },
+  sl3_parry_room: {
+    id: "sl3_parry_room",
+    name: "Echo of the Unbroken",
+    sublayer: 3,
+    tiles: parseTiles(sl3ParryRoomRows),
+    enemies: [
+      { kind: "wraith", x: 6 * TILE, y: 6 * TILE, patrolMin: 2 * TILE, patrolMax: 9 * TILE },
+      { kind: "wraith", x: 22 * TILE, y: 6 * TILE, patrolMin: 18 * TILE, patrolMax: 26 * TILE },
+    ],
+    pickups: [
+      { kind: "ability", ability: "parry", x: 14 * TILE, y: 6 * TILE - 4, id: "parry-sl3" },
+    ],
+    doors: [
+      { x: 0, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_hall_c", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
+      { x: 29 * TILE, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_lava_hall", toX: 2 * TILE, toY: 14 * TILE, facing: "right" },
+    ],
+  },
+  sl3_lava_hall: {
+    id: "sl3_lava_hall",
+    name: "Ember Veins",
+    sublayer: 3,
+    tiles: parseTiles(sl3LavaHallRows),
+    enemies: [
+      { kind: "turret", x: 4 * TILE, y: 14 * TILE, hp: 4 },
+      { kind: "turret", x: 25 * TILE, y: 14 * TILE, hp: 4 },
+      { kind: "bat", x: 13 * TILE, y: 5 * TILE, patrolMin: 8 * TILE, patrolMax: 20 * TILE },
+      { kind: "bat", x: 19 * TILE, y: 9 * TILE, patrolMin: 12 * TILE, patrolMax: 26 * TILE },
+    ],
+    pickups: [],
+    doors: [
+      { x: 0, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_parry_room", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
+      { x: 29 * TILE, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_hall_d", toX: 2 * TILE, toY: 14 * TILE, facing: "right" },
+    ],
+  },
+  sl3_hall_d: {
+    id: "sl3_hall_d",
+    name: "Deepening Dark",
+    sublayer: 3,
+    tiles: parseTiles(sl3HallDRows),
+    enemies: [
+      { kind: "wraith", x: 8 * TILE, y: 8 * TILE, patrolMin: 4 * TILE, patrolMax: 12 * TILE },
+      { kind: "wraith", x: 21 * TILE, y: 8 * TILE, patrolMin: 17 * TILE, patrolMax: 26 * TILE },
+      { kind: "turret", x: 14 * TILE, y: 14 * TILE, hp: 4 },
+    ],
+    pickups: [],
+    doors: [
+      { x: 0, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_lava_hall", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
+      { x: 29 * TILE, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_ascent", toX: 2 * TILE, toY: 14 * TILE, facing: "right" },
+    ],
+  },
+  sl3_ascent: {
+    id: "sl3_ascent",
+    name: "The Descent Path",
+    sublayer: 3,
+    tiles: parseTiles(sl3AscentRows),
+    enemies: [
+      { kind: "bat", x: 14 * TILE, y: 3 * TILE, patrolMin: 4 * TILE, patrolMax: 24 * TILE },
+      { kind: "slime", x: 6 * TILE, y: 15 * TILE, patrolMin: 2 * TILE, patrolMax: 14 * TILE },
+    ],
+    pickups: [],
+    doors: [
+      { x: 0, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_hall_d", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
+      { x: 29 * TILE, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_approach", toX: 2 * TILE, toY: 14 * TILE, facing: "right" },
+    ],
+  },
+  sl3_approach: {
+    id: "sl3_approach",
+    name: "Before the Terror",
+    sublayer: 3,
+    tiles: parseTiles(sl3ApproachRows),
+    enemies: [
+      { kind: "wraith", x: 7 * TILE, y: 6 * TILE, patrolMin: 3 * TILE, patrolMax: 13 * TILE },
+      { kind: "wraith", x: 21 * TILE, y: 6 * TILE, patrolMin: 16 * TILE, patrolMax: 26 * TILE },
+    ],
+    pickups: [
+      // Re-grant pierce — lost when Hunter was defeated; needed for Kraid.
+      { kind: "ability", ability: "pierce", x: 3 * TILE, y: 15 * TILE - 4, id: "pierce-approach" },
+    ],
+    doors: [
+      { x: 0, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_ascent", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
+      { x: 29 * TILE, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_boss", toX: 6 * TILE, toY: 16 * TILE, facing: "right" },
+    ],
+    saves: [{ x: 14 * TILE, y: 15 * TILE - 4 }],
   },
   sl3_boss: {
     id: "sl3_boss",
     name: "The Ancient Terror",
     sublayer: 3,
-    tiles: parseTiles(sl3BossRows),
+    tiles: parseTilesTall(sl3BossRows),
     enemies: [
-      {
-        kind: "kraid",
-        x: 11 * TILE,
-        y: 10 * TILE,
-        hp: 48,
-      },
+      // Kraid — fully immobile wall boss. Occupies right side of the tall room.
+      { kind: "kraid", x: 21 * TILE, y: 2 * TILE, hp: 48 },
     ],
     pickups: [
-      // Pierce shard — must be collected before the player can harm Kraid.
-      {
-        kind: "ability",
-        ability: "pierce",
-        x: 3 * TILE,
-        y: 15 * TILE - 4,
-        id: "pierce-sl3",
-      },
+      // Pierce shard on the first platform — collect before attacking cores.
+      { kind: "ability", ability: "pierce", x: 4 * TILE, y: 8 * TILE - 4, id: "pierce-sl3-boss" },
     ],
     doors: [
-      // Left back to sl3_corridor
-      {
-        x: 0,
-        y: 14 * TILE,
-        w: TILE,
-        h: TILE * 2,
-        toRoom: "sl3_corridor",
-        toX: 27 * TILE,
-        toY: 14 * TILE,
-        facing: "left",
-      },
+      { x: 0, y: 16 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_approach", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
     ],
-    saves: [{ x: 3 * TILE, y: 8 * TILE - 4 }],
   },
 };
 

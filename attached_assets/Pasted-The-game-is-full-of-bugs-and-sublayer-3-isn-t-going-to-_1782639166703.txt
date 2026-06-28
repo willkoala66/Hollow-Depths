@@ -1,0 +1,34 @@
+The game is full of bugs and sublayer 3 isn’t going to cut it for my customers. Make sure to include all of this prompt.
+Adding to v0.4: 
+When the player changes rooms, any projectiles from the previous room shouldn’t be there. 
+Reduce the sovereign's health so that it is only 75% of what it previously was.
+Update the sovereign so it can only take damage from the pierce shard.
+As shown in the image, the hunter has no idea what to do. Make it so that the Hunter will fly around the platform. It will always choose the shorter path. If it can’t decide, it will randomly pick a direction. If the player starts going the other way, so does the Hunter.
+Update the leaderboard to include hunter time. Change the remaining hp from defeating the hunter boss to the ancient terror.
+Remove the platform on the left in the room that you spawn in.
+In the room that you spawn in, add some text that says: “Find the double jump ability”. This disappears upon obtaining the double jump.
+In the Cracked Tunnel add an arrow in the center of the room pointing downwards. This arrow will disappear after obtaining the double jump.
+Remove the respawn point in the sovereign’s sanctum.
+On this preview version, it says that the z key can be used to jump. It can’t and the icon on the title screen should be removed.
+Add “Move to the room below” to the controls with the down arrow key as the button displayed.
+The door back to sublayer 2 from sublayer 3 is glitched, it is in the wall.
+Expand sublayer 3. The main part of this update is sublayer 3, so make sure it is decently sized, at least 10 rooms. Platforming is a key part of metroid-vanias, so make the player have to utilise platforms to get to doors. Change the positions of the doors to add to this. Make sure from now on, every platform has a purpose and is accessible (no pixel perfect jumps).
+Make the sublayer 3 boss fight harder. This needs to be the hardest boss yet. Expand the size of the room further by increasing the height. To make sure this works, make a camera follow the player. The boss is now completely immobile, stuck to the far right of the room and is incredibly tall. The player will have to use platforming skills to shoot at very specific points on the boss to actually deal damage with the pierce shard. The player will also have to navigate to the pierce shard. Also, parrying a projectile does way more damage. In phase 2, the platforms should change layout. Give the boss wall properties that mean that the player can take damage on contact but can never overlap the boss. This boss has a shockwave attack which has a noticeable charge up, pushes the player away and deals damage, if it is parried, the player shoots a mini shockwave back.
+The player has to navigate to the top of the room to get the peirce shard.
+Also, put the void parry about halfway in sublayer 3.
+Remove the “Refresh to descend again” text.
+Lock the player in sublayer 2 until they have defeated the hunter.
+Prevent the hunter from respawning after defeating it.
+Remove “Click the canvas first if keys do nothing” text.
+Remove “Built in canvas” from “Hollow Depths — a 2D metroidvania built in canvas” text.
+Change of mind. Remove the “Live countdown to August 1, 2026 (top-right)”.
+Add terms and conditions. This pops up the first time the website is opened on that device and can also be accessed on the title screen. The pop-up begins with: “Please read the following terms and conditions” .The terms and conditions are:
+“Inappropriate leaderboard names will be removed along with the rest of the run time.”
+"The developer is not responsible for any technical issues, crashes, lag, or loss of game progress on your device. If the game struggles to run because you have 40 Google Docs tabs open for revision, that is between you and your Chromebook."
+"By submitting a score, you agree that your chosen nickname and run-time will be stored publicly on the leaderboard. This app does not collect, store, or track personal data, school emails, or passwords. The only data that is collected cannot be tracked down to individual users. If you want your name removed from the database, please contact the developer."
+"If this application is restricted or blocked by the school’s IT web filters at any point, users must not attempt to use VPNs, proxy sites, or other bypass methods on school Chromebooks to access it. Doing so violates the school's Chromebook Use Policy, and the developer does not condone or accept responsibility for this behavior."
+“Exploiting bugs for better times is allowed, but do make the developer aware of them.”
+"Any attempts to use automated scripts, alter the game's source code via browser tools, or manipulate network requests is strictly prohibited.”
+“This is a fun project as a quick break from revising. The developer is not responsible for any misuse of the product. Any use that means the user is subject to chromebook misuse behavior points should be the fault of the user for playing at such a time.”
+Provide a tick-box that says “I agree to the above” and a button that says “Continue” that can only be pressed upon ticking the box.
+Replace any text that appears on screen that talks about the boss nicknames that I have used to tell you about the bosses such as “hunter” and “Kraid” with the names that appear above their health bar. Make sure to also apply this to leaderboard times.  

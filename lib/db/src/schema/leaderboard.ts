@@ -10,6 +10,7 @@ export const leaderboardTable = pgTable("leaderboard", {
   playerHpAtHollow: integer("player_hp_at_hollow"),
   playerHpAtSovereign: integer("player_hp_at_sovereign"),
   playerHpAtHunter: integer("player_hp_at_hunter"),
+  hunterFrames: integer("hunter_frames"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -41,8 +41,15 @@ const MAP_LAYOUT: Record<string, MapCell> = {
   sl2_east: { gx: 2, gy: 1, sublayer: 2 },
   // Sublayer 3 — The Sunken Wound
   sl3_entry: { gx: 0, gy: 0, sublayer: 3 },
-  sl3_corridor: { gx: 1, gy: 0, sublayer: 3 },
-  sl3_boss: { gx: 2, gy: 0, sublayer: 3 },
+  sl3_hall_a: { gx: 1, gy: 0, sublayer: 3 },
+  sl3_hall_b: { gx: 2, gy: 0, sublayer: 3 },
+  sl3_hall_c: { gx: 3, gy: 0, sublayer: 3 },
+  sl3_parry_room: { gx: 4, gy: 0, sublayer: 3 },
+  sl3_lava_hall: { gx: 5, gy: 0, sublayer: 3 },
+  sl3_hall_d: { gx: 6, gy: 0, sublayer: 3 },
+  sl3_ascent: { gx: 7, gy: 0, sublayer: 3 },
+  sl3_approach: { gx: 8, gy: 0, sublayer: 3 },
+  sl3_boss: { gx: 9, gy: 0, sublayer: 3 },
 };
 
 const ABILITY_NAMES: Record<string, string> = {
@@ -89,15 +96,15 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
     sx = (Math.random() - 0.5) * g.shake;
     sy = (Math.random() - 0.5) * g.shake;
   }
-  ctx.save();
-  ctx.translate(sx, sy);
-
-  // Layered background
+  // Background drawn in screen space before the camera-scroll translate
   drawBackground(ctx, g);
+
+  ctx.save();
+  ctx.translate(sx, sy - g.camY);
 
   // Tiles
   const sublayer = (def.sublayer ?? 1) as 1 | 2 | 3;
-  for (let y = 0; y < ROOM_H; y++) {
+  for (let y = 0; y < def.tiles.length; y++) {
     for (let x = 0; x < ROOM_W; x++) {
       const t = def.tiles[y][x];
       if (t === 1) drawWallTile(ctx, x, y, def.tiles, sublayer);
@@ -128,18 +135,9 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
     drawEnemy(ctx, e, g.gameTime);
   }
 
-  // Hunter (Sublayer 2 wraith) — only if it's in this room
+  // Hunter (Sublayer 2 wraith) — only if it's in this room (world space)
   if (g.hunter && g.hunter.roomId === g.currentRoomId) {
     drawHunter(ctx, g.hunter, g.gameTime, g.hunterAppearTimer);
-    // Red pulsing vignette while being chased in the same room.
-    const pulse = 0.07 + Math.sin(g.gameTime * 0.14) * 0.04;
-    const vgW = ROOM_W * TILE;
-    const vgH = ROOM_H * TILE;
-    const vg = ctx.createRadialGradient(vgW / 2, vgH / 2, vgH * 0.25, vgW / 2, vgH / 2, vgW * 0.75);
-    vg.addColorStop(0, `rgba(0,0,0,0)`);
-    vg.addColorStop(1, `rgba(180,0,0,${pulse.toFixed(3)})`);
-    ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, vgW, vgH);
   }
 
   // Projectiles
@@ -161,7 +159,19 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
     drawPlayer(ctx, g.player, g.gameTime);
   }
 
-  // Vignette
+  ctx.restore();
+
+  // Hunter vignette — red pulse in screen space (after restore)
+  if (g.hunter && g.hunter.roomId === g.currentRoomId) {
+    const pulse = 0.07 + Math.sin(g.gameTime * 0.14) * 0.04;
+    const hvg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.25, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.75);
+    hvg.addColorStop(0, `rgba(0,0,0,0)`);
+    hvg.addColorStop(1, `rgba(180,0,0,${pulse.toFixed(3)})`);
+    ctx.fillStyle = hvg;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+
+  // Vignette (screen space)
   const vg = ctx.createRadialGradient(
     VIEW_W / 2,
     VIEW_H / 2,
@@ -174,8 +184,6 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
   vg.addColorStop(1, "rgba(0,0,0,0.65)");
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-  ctx.restore();
 
   // HUD (no shake)
   drawHUD(ctx, g);
@@ -254,7 +262,6 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
     );
     ctx.font = "12px sans-serif";
     ctx.fillStyle = `rgba(180, 120, 80, ${t})`;
-    ctx.fillText("Refresh to descend again.", VIEW_W / 2, VIEW_H / 2 + 64);
   }
 }
 

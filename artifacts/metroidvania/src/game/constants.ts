@@ -1,6 +1,7 @@
 export const TILE = 32;
 export const ROOM_W = 30;
 export const ROOM_H = 18;
+export const TALL_ROOM_H = 36;
 export const VIEW_W = TILE * ROOM_W;
 export const VIEW_H = TILE * ROOM_H;
 

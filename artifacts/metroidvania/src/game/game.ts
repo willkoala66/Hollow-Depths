@@ -22,6 +22,7 @@ import {
   PROJECTILE_SPEED,
   SHOOT_COOLDOWN,
   TILE,
+  VIEW_H,
 } from "./constants";
 import { createEnemy, type Enemy, type Projectile } from "./enemies";
 import { clearPressed, type InputState } from "./input";
@@ -100,6 +101,7 @@ export interface GameState {
   lastSublayer: 1 | 2 | 3;
   hunter: Hunter | null;
   hunterAppearTimer: number;
+  camY: number;
   hunterDefeated: boolean;
   kraidDefeated: boolean;
   kraidDefeatedTime: number | null;
@@ -157,6 +159,7 @@ export function createGame(): GameState {
     lastSublayer: 1,
     hunter: null,
     hunterAppearTimer: 0,
+    camY: 0,
     hunterDefeated: false,
     kraidDefeated: false,
     kraidDefeatedTime: null,
@@ -280,6 +283,8 @@ function performTransition(g: GameState) {
   const fromRoom = g.rooms[g.currentRoomId]?.def;
   const toRoom = g.rooms[t.to]?.def;
   g.currentRoomId = t.to;
+  g.projectiles = [];
+  g.camY = 0;
   const p = g.player;
   p.x = t.toX;
   p.y = t.toY;
@@ -449,38 +454,35 @@ function updateHunter(g: GameState) {
 
   const dx = p.x + p.w / 2 - (h.x + h.w / 2);
   const dy = p.y + p.h / 2 - (h.y + h.h / 2);
-  const dist = Math.sqrt(dx * dx + dy * dy);
+  const dist = Math.hypot(dx, dy) || 1;
 
-  if (dist > 1) {
-    // Speed ramps up slightly when far away (feels relentless).
-    const spd = HUNTER_SPEED + Math.min(1.5, dist / 160);
-    h.vx = (dx / dist) * spd;
-    h.vy = (dy / dist) * spd;
-    h.facing = dx > 0 ? 1 : -1;
+  // Free-fly directly toward the player — no gravity, no jump logic.
+  const spd = HUNTER_SPEED + Math.min(1.5, dist / 160);
+  h.vx = (dx / dist) * spd;
+  h.vy = (dy / dist) * spd;
+  h.facing = dx > 0 ? 1 : -1;
+
+  // Move and soft-collide with tiles (push out rather than zero velocity).
+  h.x += h.vx;
+  h.y += h.vy;
+  const tiles = room.def.tiles;
+  const hMinC = Math.floor(h.x / TILE);
+  const hMaxC = Math.floor((h.x + h.w - 1) / TILE);
+  const hMinR = Math.floor(h.y / TILE);
+  const hMaxR = Math.floor((h.y + h.h - 1) / TILE);
+  for (let r = hMinR; r <= hMaxR; r++) {
+    for (let c = hMinC; c <= hMaxC; c++) {
+      if (r < 0 || r >= tiles.length || c < 0 || c >= tiles[0].length) continue;
+      if (tiles[r][c] !== 1) continue;
+      // Push out from whichever axis has smaller overlap.
+      const overlapX = h.vx > 0 ? (c * TILE) - (h.x + h.w) : ((c + 1) * TILE) - h.x;
+      const overlapY = h.vy > 0 ? (r * TILE) - (h.y + h.h) : ((r + 1) * TILE) - h.y;
+      if (Math.abs(overlapX) < Math.abs(overlapY)) h.x += overlapX;
+      else h.y += overlapY;
+    }
   }
-
-  // Detect wall/ceiling/floor before moveAndCollide zeroes the velocity.
-  const preVx = h.vx;
-  const preVy = h.vy;
-  const move = moveAndCollide(h, room.def.tiles);
-  h.onGround = move.onGround;
-
-  // Jump over obstacles: when blocked horizontally while on ground, leap.
-  if (move.hitX && h.onGround && h.jumpCooldown <= 0) {
-    h.vy = -13;
-    h.jumpCooldown = 28;
-  }
-  if (h.jumpCooldown > 0) h.jumpCooldown--;
-
-  if (move.hitX && !move.hitY) {
-    h.crawlSurface = preVx < 0 ? "wallL" : "wallR";
-  } else if (move.hitY && !move.hitX) {
-    h.crawlSurface = preVy < 0 ? "ceiling" : "floor";
-  } else if (move.onGround) {
-    h.crawlSurface = "floor";
-  } else {
-    h.crawlSurface = "none";
-  }
+  h.onGround = false;
+  h.crawlSurface = "none";
 
   // Contact damage to the player.
   if (
@@ -837,12 +839,12 @@ export function updateGame(g: GameState, input: InputState) {
         ) {
           continue;
         }
-        // Boss/Sovereign is armored while charging/dashing; Kraid is ALWAYS
-        // armored — only Pierce Shard shots can harm it.
+        // Kraid: always armored (pierce only, core hits only).
+        // Sovereign: always armored. Boss: armored only while charging/dashing.
         const armored =
           e.kind === "kraid" ||
-          ((e.kind === "boss" || e.kind === "sovereign") &&
-            (e.state === "dash_charge" || e.state === "dashing"));
+          e.kind === "sovereign" ||
+          (e.kind === "boss" && (e.state === "dash_charge" || e.state === "dashing"));
         if (armored && !pr.pierce) {
           spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 5, "#ffb060", {
             spread: 3,
@@ -852,6 +854,19 @@ export function updateGame(g: GameState, input: InputState) {
           g.projectiles.splice(i, 1);
           consumed = true;
           break;
+        }
+        // Kraid core check: piercing shot must hit near one of the three
+        // exposed cores (at e.y+4*TILE, e.y+16*TILE, e.y+28*TILE).
+        if (e.kind === "kraid") {
+          const coreCenters = [e.y + 4 * TILE + TILE / 2, e.y + 16 * TILE + TILE / 2, e.y + 28 * TILE + TILE / 2];
+          const prCY = pr.y + pr.h / 2;
+          const nearCore = coreCenters.some((cy) => Math.abs(prCY - cy) < TILE * 2);
+          if (!nearCore) {
+            spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 4, "#8a4010", { spread: 2, gravity: 0, life: 12 });
+            g.projectiles.splice(i, 1);
+            consumed = true;
+            break;
+          }
         }
         e.hp -= pr.damage;
         e.hitFlash = 8;
@@ -1023,6 +1038,21 @@ export function updateGame(g: GameState, input: InputState) {
     p.walkAnim += 0.25;
   } else {
     p.walkAnim *= 0.9;
+  }
+
+  // Smooth camera for tall rooms
+  {
+    const roomTileH = room.def.tiles.length * TILE;
+    if (roomTileH > VIEW_H) {
+      const targetCamY = Math.max(0, Math.min(
+        p.y + p.h / 2 - VIEW_H / 2,
+        roomTileH - VIEW_H,
+      ));
+      g.camY += (targetCamY - g.camY) * 0.12;
+      if (Math.abs(g.camY - targetCamY) < 0.5) g.camY = targetCamY;
+    } else {
+      g.camY = 0;
+    }
   }
 
   clearPressed(input);
@@ -1210,113 +1240,93 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
       break;
     }
     case "kraid": {
-      // Ancient Terror — massive, armored, mostly stationary. Only pierce harms it.
+      // Ancient Terror — fully immobile wall boss. Fires from three cores.
+      // Only pierce shard shots near a core deal damage.
       e.phase += 0.015;
       e.cooldown--;
-      e.vy += 0.4;
-      if (e.vy > 14) e.vy = 14;
-
-      const kraidDx = p.x + p.w / 2 - (e.x + e.w / 2);
-      e.facing = kraidDx >= 0 ? 1 : -1;
-      // Very slow drift toward player
-      e.vx = Math.sign(kraidDx) * 0.25;
+      // No movement whatsoever — permanently affixed to the right wall.
+      e.vx = 0;
+      e.vy = 0;
+      e.facing = -1;
 
       const hpPct2 = e.hp / e.maxHp;
+      const cores = [e.y + 4 * TILE, e.y + 16 * TILE, e.y + 28 * TILE];
 
       if (e.state === "idle") {
-        e.vx = Math.sign(kraidDx) * 0.25;
         if (e.cooldown <= 0) {
           const r = Math.random();
-          if (r < 0.35) {
+          if (r < 0.38) {
             e.state = "telegraph";
-            e.cooldown = 32;
-          } else if (r < 0.65) {
+            e.cooldown = 36;
+          } else if (r < 0.70) {
             e.state = "aim_charge";
             e.cooldown = 28;
           } else {
             e.state = "slam_charge";
-            e.cooldown = 38;
+            e.cooldown = 42;
           }
         }
       } else if (e.state === "telegraph") {
-        e.vx *= 0.7;
         if (e.cooldown <= 0) {
-          // Fan of shots fired upward from the body
-          const shots = hpPct2 < 0.5 ? 7 : 5;
+          // Fan of projectiles from each core leftward toward player
+          const shots = hpPct2 < 0.5 ? 5 : 3;
           const half = (shots - 1) / 2;
-          for (let fi = -half; fi <= half; fi++) {
-            const ang = Math.PI * 1.5 + fi * 0.2;
-            g.projectiles.push({
-              x: e.x + e.w / 2 - 7,
-              y: e.y - 7,
-              vx: Math.cos(ang) * 5.5,
-              vy: Math.sin(ang) * 5.5,
-              life: 140,
-              w: 14, h: 14,
-              fromPlayer: false,
-              damage: 1,
-            });
-          }
-          e.state = "recover";
-          e.cooldown = hpPct2 < 0.5 ? 45 : 60;
-        }
-      } else if (e.state === "aim_charge") {
-        e.vx *= 0.8;
-        if (e.cooldown <= 0) {
-          const tx = p.x + p.w / 2;
-          const ty = p.y + p.h / 2;
-          const ox = e.x + e.w / 2;
-          const oy = e.y + e.h * 0.3;
-          const baseAng = Math.atan2(ty - oy, tx - ox);
-          const offsets = hpPct2 < 0.5 ? [-0.22, -0.1, 0, 0.1, 0.22] : [-0.18, 0, 0.18];
-          for (const off of offsets) {
-            const ang = baseAng + off;
-            g.projectiles.push({
-              x: ox - 7, y: oy - 7,
-              vx: Math.cos(ang) * 7, vy: Math.sin(ang) * 7,
-              life: 160, w: 14, h: 14,
-              fromPlayer: false, damage: 1,
-            });
-          }
-          e.state = "recover";
-          e.cooldown = hpPct2 < 0.5 ? 50 : 65;
-        }
-      } else if (e.state === "slam_charge") {
-        e.vx *= 0.9;
-        if (e.cooldown <= 0) {
-          // Side barrage from left and right flanks
-          for (const side of [-1, 1]) {
-            const ox = side === -1 ? e.x : e.x + e.w;
-            const oy = e.y + e.h * 0.4;
-            g.projectiles.push({
-              x: ox - 7, y: oy - 7,
-              vx: side * 8, vy: 0,
-              life: 100, w: 14, h: 14,
-              fromPlayer: false, damage: 1,
-            });
-            if (hpPct2 < 0.5) {
+          for (const cy of cores) {
+            for (let fi = -half; fi <= half; fi++) {
+              const ang = Math.PI + fi * 0.24;
               g.projectiles.push({
-                x: ox - 7, y: oy - 26,
-                vx: side * 8, vy: -1,
-                life: 100, w: 14, h: 14,
+                x: e.x - 7, y: cy + TILE / 2 - 7,
+                vx: Math.cos(ang) * 4.5, vy: Math.sin(ang) * 4.5,
+                life: 180, w: 14, h: 14,
                 fromPlayer: false, damage: 1,
               });
             }
           }
-          g.shake = Math.max(g.shake, 10);
           e.state = "recover";
-          e.cooldown = hpPct2 < 0.5 ? 55 : 75;
+          e.cooldown = hpPct2 < 0.5 ? 50 : 72;
+        }
+      } else if (e.state === "aim_charge") {
+        if (e.cooldown <= 0) {
+          // Each core fires an aimed shot at player position
+          for (const cy of cores) {
+            const ox = e.x + 16;
+            const oy = cy + TILE / 2;
+            const ang = Math.atan2(p.y + p.h / 2 - oy, p.x + p.w / 2 - ox);
+            const speed = hpPct2 < 0.5 ? 7.5 : 6.0;
+            g.projectiles.push({
+              x: ox - 7, y: oy - 7,
+              vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
+              life: 190, w: 14, h: 14,
+              fromPlayer: false, damage: 1,
+            });
+          }
+          e.state = "recover";
+          e.cooldown = hpPct2 < 0.5 ? 45 : 65;
+        }
+      } else if (e.state === "slam_charge") {
+        if (e.cooldown <= 0) {
+          // Dense left-side barrage
+          const spawnCount = hpPct2 < 0.5 ? 8 : 5;
+          for (let si = 0; si < spawnCount; si++) {
+            const oy = e.y + (si + 0.5) * (e.h / spawnCount);
+            g.projectiles.push({
+              x: e.x - 14, y: oy - 7,
+              vx: -6, vy: (Math.random() - 0.5) * 3.5,
+              life: 140, w: 14, h: 14,
+              fromPlayer: false, damage: 1,
+            });
+          }
+          g.shake = Math.max(g.shake, 14);
+          e.state = "recover";
+          e.cooldown = hpPct2 < 0.5 ? 55 : 82;
         }
       } else if (e.state === "recover") {
-        e.vx *= 0.88;
         if (e.cooldown <= 0) {
           e.state = "idle";
-          e.cooldown = hpPct2 < 0.5 ? 25 : 55;
+          e.cooldown = hpPct2 < 0.5 ? 30 : 60;
         }
       }
-
-      const kr = moveAndCollide(e, tiles);
-      if (kr.hitX) e.vx = 0;
+      // Completely immobile — no moveAndCollide call
       break;
     }
     case "sovereign":

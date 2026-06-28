@@ -101,8 +101,8 @@ export function createEnemy(spawn: EnemySpawn): Enemy {
       base.cooldown = 60;
       break;
     case "kraid":
-      base.w = 192;
-      base.h = 160;
+      base.w = 8 * TILE;
+      base.h = 32 * TILE;
       base.hp = spawn.hp ?? 48;
       base.maxHp = base.hp;
       base.damage = 1;
