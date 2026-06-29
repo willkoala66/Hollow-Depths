@@ -634,28 +634,60 @@ body {
   font-size: 11px;
 }
 
-/* Title countdown — top right */
-.title-countdown {
-  position: absolute;
-  top: 18px;
-  right: 24px;
-  text-align: right;
+/* Terms & Conditions modal */
+.terms-modal-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 1, 12, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.terms-modal {
+  background: #0e0520;
+  border: 1px solid rgba(160, 112, 255, 0.4);
+  border-radius: 6px;
+  padding: 32px 36px;
+  max-width: 520px;
+  width: 90%;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 16px;
+  box-shadow: 0 0 40px rgba(120, 60, 200, 0.25);
 }
-.title-countdown-label {
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  color: var(--text-dim);
+.terms-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #e0d8ff;
+  margin: 0;
+  text-align: center;
   text-transform: uppercase;
 }
-.title-countdown-time {
-  font-family: 'Menlo', monospace;
-  font-size: 15px;
-  color: #c0a0ff;
-  letter-spacing: 0.06em;
+.terms-body {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-dim);
 }
+.terms-body p { margin: 0 0 8px; }
+.terms-body ul { margin: 0 0 8px; padding-left: 18px; }
+.terms-body li { margin-bottom: 4px; }
+.terms-accept {
+  align-self: center;
+  background: #5a1a8a;
+  color: #f0e8ff;
+  border: 1px solid rgba(160, 112, 255, 0.5);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 10px 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-transform: uppercase;
+}
+.terms-accept:hover { background: #7a2aaa; }
 
 /* Updates button — bottom left */
 .title-updates-btn {

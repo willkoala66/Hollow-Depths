@@ -454,35 +454,35 @@ function updateHunter(g: GameState) {
 
   const dx = p.x + p.w / 2 - (h.x + h.w / 2);
   const dy = p.y + p.h / 2 - (h.y + h.h / 2);
-  const dist = Math.hypot(dx, dy) || 1;
+  const dist = Math.sqrt(dx * dx + dy * dy);
 
-  // Free-fly directly toward the player — no gravity, no jump logic.
-  const spd = HUNTER_SPEED + Math.min(1.5, dist / 160);
-  h.vx = (dx / dist) * spd;
-  h.vy = (dy / dist) * spd;
-  h.facing = dx > 0 ? 1 : -1;
-
-  // Move and soft-collide with tiles (push out rather than zero velocity).
-  h.x += h.vx;
-  h.y += h.vy;
-  const tiles = room.def.tiles;
-  const hMinC = Math.floor(h.x / TILE);
-  const hMaxC = Math.floor((h.x + h.w - 1) / TILE);
-  const hMinR = Math.floor(h.y / TILE);
-  const hMaxR = Math.floor((h.y + h.h - 1) / TILE);
-  for (let r = hMinR; r <= hMaxR; r++) {
-    for (let c = hMinC; c <= hMaxC; c++) {
-      if (r < 0 || r >= tiles.length || c < 0 || c >= tiles[0].length) continue;
-      if (tiles[r][c] !== 1) continue;
-      // Push out from whichever axis has smaller overlap.
-      const overlapX = h.vx > 0 ? (c * TILE) - (h.x + h.w) : ((c + 1) * TILE) - h.x;
-      const overlapY = h.vy > 0 ? (r * TILE) - (h.y + h.h) : ((r + 1) * TILE) - h.y;
-      if (Math.abs(overlapX) < Math.abs(overlapY)) h.x += overlapX;
-      else h.y += overlapY;
-    }
+  if (dist > 1) {
+    const spd = HUNTER_SPEED + Math.min(1.5, dist / 160);
+    h.vx = (dx / dist) * spd;
+    h.vy = (dy / dist) * spd;
+    h.facing = dx > 0 ? 1 : -1;
   }
-  h.onGround = false;
-  h.crawlSurface = "none";
+
+  const preVx = h.vx;
+  const preVy = h.vy;
+  const move = moveAndCollide(h, room.def.tiles);
+  h.onGround = move.onGround;
+
+  if (move.hitX && h.onGround && h.jumpCooldown <= 0) {
+    h.vy = -13;
+    h.jumpCooldown = 28;
+  }
+  if (h.jumpCooldown > 0) h.jumpCooldown--;
+
+  if (move.hitX && !move.hitY) {
+    h.crawlSurface = preVx < 0 ? "wallL" : "wallR";
+  } else if (move.hitY && !move.hitX) {
+    h.crawlSurface = preVy < 0 ? "ceiling" : "floor";
+  } else if (move.onGround) {
+    h.crawlSurface = "floor";
+  } else {
+    h.crawlSurface = "none";
+  }
 
   // Contact damage to the player.
   if (

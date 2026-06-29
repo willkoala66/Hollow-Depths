@@ -715,46 +715,70 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, time: number) {
       break;
     }
     case "kraid": {
+      // Wall boss — massive, immobile, filling the right side of the tall room.
       const flash2 = e.hitFlash > 0;
-      const kpulse = Math.sin(time * 0.06) * 3;
-      // Body — massive armored hulk
-      ctx.fillStyle = flash2 ? "#ffffff" : "#3a1808";
+      const kpulse = 0.7 + Math.sin(time * 0.05) * 0.3;
+      // Main body — dark armored slab
+      ctx.fillStyle = flash2 ? "#ffffff" : "#1a0403";
       ctx.fillRect(e.x, e.y, e.w, e.h);
-      // Armor plates
-      ctx.fillStyle = flash2 ? "#ffff80" : "#7a3010";
-      for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 4; col++) {
-          ctx.fillRect(
-            e.x + 8 + col * 46,
-            e.y + 8 + row * 50,
-            40,
-            42,
-          );
-        }
+      // Segmented armor bands (8 horizontal bands)
+      for (let seg = 0; seg < 8; seg++) {
+        const bandY = e.y + seg * (e.h / 8);
+        const bandH = e.h / 8;
+        ctx.fillStyle = flash2 ? "#ffff80" : (seg % 2 === 0 ? "#2e0a07" : "#220806");
+        ctx.fillRect(e.x + 6, bandY + 3, e.w - 12, bandH - 6);
+        ctx.fillStyle = flash2 ? "#ffff80" : "#0a0202";
+        ctx.fillRect(e.x, bandY, e.w, 3);
       }
-      // Spines on top
-      ctx.fillStyle = flash2 ? "#ffffff" : "#c06020";
-      for (let i = 0; i < 5; i++) {
-        const sx = e.x + 16 + i * 38;
-        const sh = 24 + (i % 2) * 12;
+      // Spines along the LEFT edge (toward the player arena)
+      ctx.fillStyle = flash2 ? "#ffffff" : "#b05010";
+      for (let si = 0; si < 12; si++) {
+        const spineY = e.y + (si + 0.5) * (e.h / 12);
+        const spineLen = 20 + (si % 3) * 10;
+        const spineOff = Math.sin(time * 0.04 + si * 0.7) * 2;
         ctx.beginPath();
-        ctx.moveTo(sx, e.y);
-        ctx.lineTo(sx + 14, e.y - sh + kpulse * 0.3);
-        ctx.lineTo(sx + 28, e.y);
+        ctx.moveTo(e.x, spineY - 7);
+        ctx.lineTo(e.x - spineLen, spineY + spineOff);
+        ctx.lineTo(e.x, spineY + 7);
         ctx.closePath();
         ctx.fill();
       }
-      // Eyes (pair)
-      ctx.fillStyle = "#1a0408";
-      ctx.fillRect(e.x + 28, e.y + 24, 18, 14);
-      ctx.fillRect(e.x + e.w - 46, e.y + 24, 18, 14);
-      ctx.fillStyle = flash2 ? "#ffffff" : e.state === "telegraph" ? "#ffffaa" : "#ff6010";
-      ctx.fillRect(e.x + 31, e.y + 27, 10, 8);
-      ctx.fillRect(e.x + e.w - 43, e.y + 27, 10, 8);
-      // Mouth grate
-      ctx.fillStyle = "#1a0408";
-      ctx.fillRect(e.x + 40, e.y + e.h - 40, e.w - 80, 22);
-      // HP pips above
+      // Three glowing cores — the only vulnerable weak points
+      const coreCenters = [e.y + 4 * TILE + TILE / 2, e.y + 16 * TILE + TILE / 2, e.y + 28 * TILE + TILE / 2];
+      for (let ci = 0; ci < coreCenters.length; ci++) {
+        const cy = coreCenters[ci];
+        const cx2 = e.x + 20;
+        const cRad = 14 + Math.sin(time * 0.06 + ci * 2) * 3;
+        // Glow aura
+        const cGlow = ctx.createRadialGradient(cx2, cy, 0, cx2, cy, cRad * 3);
+        cGlow.addColorStop(0, `rgba(255,80,20,${(kpulse * 0.7).toFixed(2)})`);
+        cGlow.addColorStop(1, "rgba(255,30,5,0)");
+        ctx.fillStyle = cGlow;
+        ctx.fillRect(cx2 - cRad * 3, cy - cRad * 3, cRad * 6, cRad * 6);
+        // Core socket (dark recess)
+        ctx.fillStyle = flash2 ? "#ffffff" : "#0a0000";
+        ctx.beginPath();
+        ctx.arc(cx2, cy, cRad + 4, 0, Math.PI * 2);
+        ctx.fill();
+        // Core orb
+        ctx.fillStyle = flash2 ? "#ffffff" : "#ff4010";
+        ctx.beginPath();
+        ctx.arc(cx2, cy, cRad, 0, Math.PI * 2);
+        ctx.fill();
+        // Bright center highlight
+        ctx.fillStyle = "#ffff60";
+        ctx.beginPath();
+        ctx.arc(cx2, cy, cRad * 0.38, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Eyes near top
+      ctx.fillStyle = flash2 ? "#ffffff" : "#0a0000";
+      ctx.fillRect(e.x + 30, e.y + 30, 28, 20);
+      ctx.fillRect(e.x + 80, e.y + 30, 28, 20);
+      ctx.fillStyle = flash2 ? "#ffffff" : e.state === "telegraph" ? "#ffffaa" : "#ff5010";
+      ctx.fillRect(e.x + 34, e.y + 34, 18, 12);
+      ctx.fillRect(e.x + 84, e.y + 34, 18, 12);
+      // HP pips
       drawHpPips(ctx, e);
       break;
     }
@@ -762,7 +786,7 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, time: number) {
     case "boss": {
       const isSov = e.kind === "sovereign";
       const pulse = Math.sin(time * 0.08) * 4;
-      const armored = e.state === "dash_charge" || e.state === "dashing";
+      const armored = isSov || e.state === "dash_charge" || e.state === "dashing";
       const slamming =
         e.state === "slam_charge" ||
         e.state === "slam_jump" ||

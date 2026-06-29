@@ -13,6 +13,7 @@ interface LeaderboardEntry {
   deaths: number;
   hollowFrames: number | null;
   sovereignFrames: number | null;
+  hunterFrames: number | null;
   playerHpAtHollow: number | null;
   playerHpAtSovereign: number | null;
   playerHpAtHunter: number | null;
@@ -31,6 +32,9 @@ function formatFrames(frames: number | null | undefined): string {
 export default function Game() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [screen, setScreen] = useState<Screen>("title");
+  const [termsAccepted, setTermsAccepted] = useState(
+    () => localStorage.getItem("hdTermsAccepted") === "1"
+  );
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const prevPausedRef = useRef(false);
@@ -123,7 +127,10 @@ export default function Game() {
           />
         )}
       </div>
-      <p className="game-credits">Hollow Depths — a 2D metroidvania built in canvas</p>
+      <p className="game-credits">Hollow Depths — a 2D metroidvania</p>
+      {!termsAccepted && (
+        <TermsModal onAccept={() => { localStorage.setItem("hdTermsAccepted", "1"); setTermsAccepted(true); }} />
+      )}
     </div>
   );
 }
@@ -141,10 +148,10 @@ function PauseOverlay({
         <p className="pause-title">Paused</p>
         <div className="pause-controls">
           <Control label="Move" keys={["←", "→"]} />
-          <Control label="Jump" keys={["↑", "Z"]} />
+          <Control label="Jump" keys={["↑"]} />
           <Control label="Dash" keys={["X"]} />
           <Control label="Strike" keys={["C"]} />
-          <Control label="Phantom Veil" keys={["Z (hold)"]} />
+          <Control label="Phantom Veil" keys={["Q (hold)"]} />
           <Control label="Parry" keys={["V"]} />
           <Control label="Pause" keys={["Esc"]} />
         </div>
@@ -198,14 +205,20 @@ function QuitConfirmModal({
 }
 
 const CHANGELOG = [
+  { version: "v0.4.1", date: "June 2026", notes: [
+    "Sublayer 3 — The Sunken Wound: ten rooms, Kraid wall boss (true ending)",
+    "Kraid: fully immobile wall boss with 3 glowing cores — pierce required",
+    "SL3 rooms: pit+platform structure, must jump across to reach next door",
+    "Sovereign is always armored (visual change)",
+    "Sovereign HP reduced 32 → 24",
+    "New ability: Void Parry (V) — reflect projectiles, stun enemies",
+    "Terms & conditions popup added (first launch)",
+    "Leaderboard now tracks Hunter-slain time",
+  ]},
   { version: "v0.4", date: "June 2026", notes: [
-    "Sublayer 3 — The Sunken Wound: three rooms, Kraid boss (true ending)",
+    "Sublayer 3 teaser: initial layout and Kraid placeholder",
     "Phantom Veil now hides player from non-boss enemies and turrets",
     "Hunter AI now jumps over platform obstacles",
-    "New ability: Void Parry (V) — reflect projectiles, stun enemies",
-    "HUD: pierce icon merged into blast icon (golden when pierce active)",
-    "HUD: cooldown overlays on dash and blast/parry icons",
-    "Defeating Hunter opens SL3 portal; Kraid = true ending",
   ]},
   { version: "v0.3", date: "May 2026", notes: [
     "Sublayer 2 — The Hollow Labyrinth: 6 rooms, Phantom Veil, Hunter",
@@ -222,28 +235,6 @@ const CHANGELOG = [
   ]},
 ];
 
-function useCountdown(target: Date) {
-  const [timeStr, setTimeStr] = useState("");
-  useEffect(() => {
-    const tick = () => {
-      const now = Date.now();
-      const diff = target.getTime() - now;
-      if (diff <= 0) { setTimeStr("LAUNCHED"); return; }
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setTimeStr(`${d}d ${h}h ${m}m ${s}s`);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [target]);
-  return timeStr;
-}
-
-const LAUNCH_DATE = new Date("2026-08-01T00:00:00Z");
-
 function TitleScreen({
   onStart,
   onLeaderboard,
@@ -252,7 +243,6 @@ function TitleScreen({
   onLeaderboard: () => void;
 }) {
   const [showChangelog, setShowChangelog] = useState(false);
-  const countdown = useCountdown(LAUNCH_DATE);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -271,12 +261,6 @@ function TitleScreen({
 
   return (
     <div className="title-overlay">
-      {/* Countdown — top right */}
-      <div className="title-countdown">
-        <span className="title-countdown-label">FULL RELEASE IN</span>
-        <span className="title-countdown-time">{countdown}</span>
-      </div>
-
       <div className="title-stack">
         <p className="title-pretitle">A descent through three sublayers</p>
         <h1 className="title-name">Hollow Depths</h1>
@@ -297,10 +281,10 @@ function TitleScreen({
         </div>
         <div className="title-controls">
           <Control label="Move" keys={["←", "→"]} />
-          <Control label="Jump" keys={["↑", "Z"]} />
+          <Control label="Jump" keys={["↑"]} />
           <Control label="Dash" keys={["X"]} />
           <Control label="Strike" keys={["C"]} />
-          <Control label="Phantom Veil" keys={["Z (hold)"]} />
+          <Control label="Phantom Veil" keys={["Q (hold)"]} />
           <Control label="Parry" keys={["V"]} />
           <Control label="Pause" keys={["Esc"]} />
         </div>
@@ -376,6 +360,7 @@ function VictoryScreen({
           deaths: game.deaths,
           hollowFrames: game.hollowDefeatedTime ?? null,
           sovereignFrames: game.sovereignDefeatedTime ?? null,
+          hunterFrames: game.hunterDefeatedTime ?? null,
           playerHpAtHollow: game.playerHpAtHollow || null,
           playerHpAtSovereign: game.playerHpAtSovereign || null,
           playerHpAtHunter: game.playerHpAtHunter || null,
@@ -400,6 +385,7 @@ function VictoryScreen({
           <StatRow label="Deaths" value={String(game.deaths)} />
           <StatRow label="Hollow slain at" value={formatFrames(game.hollowDefeatedTime)} />
           <StatRow label="Sovereign slain at" value={formatFrames(game.sovereignDefeatedTime)} />
+          <StatRow label="Hunter slain at" value={formatFrames(game.hunterDefeatedTime ?? null)} />
           <StatRow
             label="HP remaining"
             value={`${game.player.hp} / ${game.player.maxHp}`}
@@ -551,6 +537,10 @@ function LeaderboardScreen({
                               value={e.playerHpAtSovereign != null ? String(e.playerHpAtSovereign) : "—"}
                             />
                             <DetailStat
+                              label="Hunter slain at"
+                              value={formatFrames(e.hunterFrames)}
+                            />
+                            <DetailStat
                               label="HP at Hunter kill"
                               value={e.playerHpAtHunter != null ? String(e.playerHpAtHunter) : "—"}
                             />
@@ -583,6 +573,27 @@ function DetailStat({ label, value }: { label: string; value: string }) {
     <div className="detail-stat">
       <span className="stat-label">{label}</span>
       <span className="stat-value">{value}</span>
+    </div>
+  );
+}
+
+function TermsModal({ onAccept }: { onAccept: () => void }) {
+  return (
+    <div className="terms-modal-bg">
+      <div className="terms-modal">
+        <h2 className="terms-title">Before You Descend</h2>
+        <div className="terms-body">
+          <p>Hollow Depths is a browser game provided for entertainment purposes only.</p>
+          <ul>
+            <li>This game saves a small flag in your browser (localStorage) to remember that you accepted these terms. No other personal data is collected or stored locally.</li>
+            <li>Leaderboard entries (name, run time, deaths) are stored on our server. Do not enter real names or sensitive information.</li>
+            <li>The game contains flashing lights and fast-moving visuals. If you are photosensitive, please take care.</li>
+            <li>This game is provided as-is, with no warranties. Play at your own risk.</li>
+          </ul>
+          <p>By clicking <strong>Accept &amp; Play</strong> you confirm you have read and agree to these terms.</p>
+        </div>
+        <button className="terms-accept" onClick={onAccept}>Accept &amp; Play</button>
+      </div>
     </div>
   );
 }
