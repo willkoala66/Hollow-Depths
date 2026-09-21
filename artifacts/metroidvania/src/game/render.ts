@@ -65,10 +65,10 @@ const ABILITY_NAMES: Record<string, string> = {
 };
 const ABILITY_DESC: Record<string, string> = {
   doubleJump: "Press jump again in the air",
-  dash: "Press Shift / X to dash forward",
-  blast: "Press C / J to fire energy",
+  dash: "Press X to dash forward",
+  blast: "Press C to fire energy",
   pierce: "Shots punch through enemies & armor",
-  phantom: "Hold Z / F to fade — slip past the Hunter",
+  phantom: "Hold Z to fade — slip past the Sovereign's Wraith",
   parry: "Press V to deflect — reflect projectiles, stun enemies",
   vessel: "Maximum vitality increased",
   pierceLost: "The Sovereign's death has unbound your shard…",
@@ -111,6 +111,12 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
       else if (t === 2) drawSpike(ctx, x, y);
     }
   }
+  drawRoomHints(ctx, g);
+
+  // Temporary spikes created by Ancient Terror projectiles.
+  for (const hazard of g.spikeHazards) {
+    drawSpikeHazard(ctx, hazard.x, hazard.y, hazard.w, hazard.h, g.gameTime);
+  }
 
   // Save points
   if (def.saves) {
@@ -142,7 +148,18 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
 
   // Projectiles
   for (const pr of g.projectiles) {
-    drawProjectile(ctx, pr.x, pr.y, pr.w, pr.h, pr.fromPlayer);
+    drawProjectile(
+      ctx,
+      pr.x,
+      pr.y,
+      pr.w,
+      pr.h,
+      pr.fromPlayer,
+      pr.unparriable,
+      pr.spike,
+      pr.vx,
+      pr.vy,
+    );
   }
 
   // Particles
@@ -213,6 +230,16 @@ export function renderGame(ctx: CanvasRenderingContext2D, g: GameState) {
       ABILITY_DESC[a.ability] ?? "",
       alpha,
       lost,
+    );
+  }
+
+  if (g.redTurretWarningTimer > 0) {
+    const alpha = Math.min(1, g.redTurretWarningTimer / 30);
+    drawWarningBanner(
+      ctx,
+      "RED SHOTS CANNOT BE PARRIED",
+      "Evade, dash, or use the platforms",
+      alpha,
     );
   }
 
@@ -323,6 +350,66 @@ function drawBackground(ctx: CanvasRenderingContext2D, g: GameState) {
     ctx.fillStyle = `rgba(200, 60, 10, ${pulse})`;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   }
+}
+
+function drawRoomHints(ctx: CanvasRenderingContext2D, g: GameState) {
+  const roomId = g.currentRoomId;
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "bold 11px sans-serif";
+  if (roomId === "antechamber" && !g.player.abilities.doubleJump) {
+    const x = 15 * TILE;
+    const y = 8 * TILE;
+    ctx.fillStyle = "rgba(20, 10, 42, 0.8)";
+    ctx.fillRect(x - 82, y - 20, 164, 40);
+    ctx.strokeStyle = "rgba(160,112,255,0.65)";
+    ctx.strokeRect(x - 81.5, y - 19.5, 163, 39);
+    ctx.fillStyle = "#caa6ff";
+    ctx.fillText("JUMP AGAIN IN THE AIR", x, y - 5);
+    ctx.fillStyle = "#e8e4ff";
+    ctx.font = "10px sans-serif";
+    ctx.fillText("WRAITH WINGS AWAIT BELOW", x, y + 10);
+  } else if (roomId === "tunnel") {
+    const x = 15 * TILE;
+    const y = 14 * TILE;
+    ctx.fillStyle = "rgba(20, 10, 42, 0.78)";
+    ctx.fillRect(x - 62, y - 28, 124, 54);
+    ctx.fillStyle = "#caa6ff";
+    ctx.font = "bold 26px sans-serif";
+    ctx.fillText("↓", x, y - 8);
+    ctx.fillStyle = "#e8e4ff";
+    ctx.font = "10px sans-serif";
+    ctx.fillText("PRESS DOWN TO DESCEND", x, y + 13);
+  }
+  ctx.restore();
+}
+
+function drawSpikeHazard(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  time: number,
+) {
+  const pulse = 0.72 + Math.sin(time * 0.12 + x) * 0.18;
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = "#c91f16";
+  ctx.beginPath();
+  ctx.moveTo(x, y + h);
+  ctx.lineTo(x + w * 0.2, y);
+  ctx.lineTo(x + w * 0.38, y + h);
+  ctx.lineTo(x + w * 0.58, y);
+  ctx.lineTo(x + w * 0.76, y + h);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x + w, y + h);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#ff9a4a";
+  ctx.fillRect(x + 3, y + h - 3, w - 6, 2);
+  ctx.restore();
 }
 
 function hash(s: string): number {
@@ -668,6 +755,29 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, time: number) {
       drawHpPips(ctx, e);
       break;
     }
+    case "redturret": {
+      ctx.fillStyle = flash ? "#ffffff" : "#360605";
+      ctx.fillRect(e.x - 2, e.y - 2, e.w + 4, e.h + 4);
+      ctx.fillStyle = flash ? "#ffffff" : "#a81414";
+      ctx.fillRect(e.x, e.y, e.w, e.h);
+      ctx.fillStyle = "#f04428";
+      ctx.fillRect(e.x + 4, e.y + 4, e.w - 8, e.h - 8);
+      const cx = e.x + e.w / 2;
+      const cy = e.y + e.h / 2;
+      ctx.fillStyle = "#210202";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffb020";
+      ctx.beginPath();
+      ctx.arc(cx + e.facing * 3, cy, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#ff5a30";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(e.x + 1, e.y + 1, e.w - 2, e.h - 2);
+      drawHpPips(ctx, e);
+      break;
+    }
     case "wraith": {
       const drift = Math.sin(time * 0.18 + e.phase) * 3;
       // Outer wisp aura
@@ -746,6 +856,7 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, time: number) {
       // Three glowing cores — the only vulnerable weak points
       const coreCenters = [e.y + 4 * TILE + TILE / 2, e.y + 16 * TILE + TILE / 2, e.y + 28 * TILE + TILE / 2];
       for (let ci = 0; ci < coreCenters.length; ci++) {
+        if ((e.coreHps?.[ci] ?? 0) <= 0) continue;
         const cy = coreCenters[ci];
         const cx2 = e.x + 20;
         const cRad = 14 + Math.sin(time * 0.06 + ci * 2) * 3;
@@ -881,19 +992,72 @@ function drawProjectile(
   w: number,
   h: number,
   fromPlayer: boolean,
+  unparriable?: boolean,
+  spike?: boolean,
+  vx = 1,
+  vy = 0,
 ) {
   const cx = x + w / 2;
   const cy = y + h / 2;
-  const color = fromPlayer ? COLORS.projectile : "#ff7050";
-  const glow = fromPlayer ? COLORS.projectileGlow : "#ffb088";
+  if (spike && !fromPlayer) {
+    const angle = Math.atan2(vy, vx);
+    const length = Math.max(w, h) * 1.65;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 0.32;
+    ctx.fillStyle = "#ff321c";
+    ctx.beginPath();
+    ctx.moveTo(-length * 0.7, 0);
+    ctx.lineTo(length * 0.5, -length * 0.42);
+    ctx.lineTo(length * 0.78, 0);
+    ctx.lineTo(length * 0.5, length * 0.42);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = unparriable ? "#ff4b20" : "#e63370";
+    ctx.beginPath();
+    ctx.moveTo(-length * 0.58, 0);
+    ctx.lineTo(length * 0.42, -length * 0.26);
+    ctx.lineTo(length * 0.68, 0);
+    ctx.lineTo(length * 0.42, length * 0.26);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#ffd080";
+    ctx.beginPath();
+    ctx.moveTo(length * 0.68, 0);
+    ctx.lineTo(length * 0.32, -length * 0.11);
+    ctx.lineTo(length * 0.32, length * 0.11);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  // Unparriable enemy shots: deep crimson with no white center (visually distinct)
+  const color = fromPlayer
+    ? COLORS.projectile
+    : unparriable
+      ? "#cc1800"
+      : "#ff7050";
+  const glow = fromPlayer
+    ? COLORS.projectileGlow
+    : unparriable
+      ? "#ff4420"
+      : "#ffb088";
   const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, w);
   g.addColorStop(0, glow);
   g.addColorStop(0.5, color);
   g.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = g;
   ctx.fillRect(cx - w, cy - h, w * 2, h * 2);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(cx - 1, cy - 1, 2, 2);
+  if (unparriable) {
+    // Spike tip — elongated dark tip to distinguish from regular shots
+    ctx.fillStyle = "#660a00";
+    ctx.fillRect(cx - 2, cy - 2, 4, 4);
+  } else {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(cx - 1, cy - 1, 2, 2);
+  }
 }
 
 function drawHUD(ctx: CanvasRenderingContext2D, g: GameState) {
@@ -1220,6 +1384,34 @@ function drawAbilityToast(
   ctx.fillStyle = COLORS.textDim;
   ctx.font = "12px sans-serif";
   ctx.fillText(desc, x + w / 2, y + 50);
+  ctx.restore();
+}
+
+function drawWarningBanner(
+  ctx: CanvasRenderingContext2D,
+  title: string,
+  subtitle: string,
+  alpha: number,
+) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const w = 390;
+  const h = 52;
+  const x = (VIEW_W - w) / 2;
+  const y = VIEW_H * 0.19;
+  ctx.fillStyle = "rgba(60, 5, 4, 0.92)";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "#ff4828";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.fillStyle = "#ff9a70";
+  ctx.font = "bold 13px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(title, VIEW_W / 2, y + 9);
+  ctx.fillStyle = "#ffe0c0";
+  ctx.font = "11px sans-serif";
+  ctx.fillText(subtitle, VIEW_W / 2, y + 30);
   ctx.restore();
 }
 

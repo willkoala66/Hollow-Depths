@@ -384,187 +384,99 @@ const sl3EntryRows = [
   "##############################",
 ];
 
-// Shared helper rows — pit+platform design.
-// Player enters from either side at floor level (rows 14-15 open).
-// Must jump up from partial floor → platform A → platform B → platform C → other partial floor.
-// Partial floor: cols 0-5 (left landing) + cols 24-29 (right landing). Pit cols 6-23.
-// Platform row always row 13 (96px above landing, within max jump height ~144px).
+// Shared helper rows for the advanced Sublayer 3 traversal rooms.
+// The route alternates height and direction so players must use the double
+// jump and dash deliberately. Landing surfaces remain 4-6 tiles wide.
+type Sl3Platform = {
+  row: number;
+  start: number;
+  width: number;
+  spikes?: number[];
+};
 
-// SL3 Room 2: Hall A — 3 equal stepping platforms.
-const sl3HallARows = [
-  "##############################",  //  0
-  "##############################",  //  1
-  "#............................#",  //  2
-  "#............................#",  //  3
-  "#............................#",  //  4
-  "#............................#",  //  5
-  "#............................#",  //  6
-  "#............................#",  //  7
-  "#............................#",  //  8
-  "#............................#",  //  9
-  "#............................#",  // 10
-  "#............................#",  // 11
-  "#............................#",  // 12
-  "#.......####..####..####.....#",  // 13 platforms at cols 8-11, 14-17, 20-23
-  " ............................ ",  // 14 LEFT door
-  " ............................ ",  // 15 RIGHT door
-  "######..................######",  // 16 partial floor: cols 0-5 left + cols 24-29 right
-  "######..................######",  // 17
-];
+function makeSl3TraversalRows(platforms: Sl3Platform[]) {
+  const rows = Array.from({ length: ROOM_H }, (_, row) => {
+    if (row < 2) return "#".repeat(ROOM_W);
+    if (row >= 14) return " ".repeat(ROOM_W);
+    return `#${".".repeat(ROOM_W - 2)}#`;
+  });
 
-// SL3 Room 3: Hall B — 2 wide platforms, bigger gap.
-const sl3HallBRows = [
-  "##############################",
-  "##############################",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#.......######....######.....#",  // 13 platforms at cols 8-13, 18-23
-  " ............................ ",
-  " ............................ ",
-  "######..................######",
-  "######..................######",
-];
+  // Side landings leave a safe reset point at either door.
+  rows[16] = "######" + ".".repeat(18) + "######";
+  rows[17] = "######" + ".".repeat(18) + "######";
+  rows[14] = " " + ".".repeat(28) + " ";
+  rows[15] = " " + ".".repeat(28) + " ";
 
-// SL3 Room 4: Hall C — 3 tighter platforms, shifted toward centre.
-const sl3HallCRows = [
-  "##############################",
-  "##############################",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#.....####....####....####...#",  // 13 platforms at cols 6-9, 14-17, 22-25
-  " ............................ ",
-  " ............................ ",
-  "######..................######",
-  "######..................######",
-];
+  for (const platform of platforms) {
+    const chars = rows[platform.row].split("");
+    for (let x = platform.start; x < platform.start + platform.width; x++) {
+      chars[x] = platform.spikes?.includes(x) ? "^" : "#";
+    }
+    rows[platform.row] = chars.join("");
+  }
+  return rows;
+}
 
-// SL3 Room 5: Parry Room — 3 platforms; Void Parry floats on middle platform.
-const sl3ParryRoomRows = [
-  "##############################",
-  "##############################",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#.......####..####..####.....#",  // 13 platforms (parry pickup on middle cols 14-17)
-  " ............................ ",
-  " ............................ ",
-  "######..................######",
-  "######..................######",
-];
+// SL3 Room 2: Hall A — a rising route, then a controlled drop to the exit.
+const sl3HallARows = makeSl3TraversalRows([
+  { row: 13, start: 6, width: 5 },
+  { row: 10, start: 13, width: 5 },
+  { row: 12, start: 21, width: 5 },
+]);
 
-// SL3 Room 6: Lava Hall — 3 platforms + gauntlet of turrets in the pit below.
-const sl3LavaHallRows = [
-  "##############################",
-  "##############################",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#.......####..####..####.....#",  // 13 platforms
-  " ............................ ",
-  " ............................ ",
-  "######..................######",
-  "######..................######",
-];
+// SL3 Room 3: Hall B — high/low zigzag with a double-jump opening.
+const sl3HallBRows = makeSl3TraversalRows([
+  { row: 11, start: 6, width: 5 },
+  { row: 8, start: 13, width: 5 },
+  { row: 12, start: 21, width: 5, spikes: [23] },
+]);
 
-// SL3 Room 7: Hall D — different platform spacing for variety.
-const sl3HallDRows = [
-  "##############################",
-  "##############################",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#......####...####...####....#",  // 13 platforms at cols 7-10, 14-17, 21-24
-  " ............................ ",
-  " ............................ ",
-  "######..................######",
-  "######..................######",
-];
+// SL3 Room 4: Hall C — a three-stage climb with a high final landing.
+const sl3HallCRows = makeSl3TraversalRows([
+  { row: 13, start: 6, width: 5 },
+  { row: 10, start: 12, width: 4 },
+  { row: 7, start: 19, width: 5, spikes: [19] },
+  { row: 11, start: 25, width: 4 },
+]);
 
-// SL3 Room 8: Ascent — 3 platforms, bats make it treacherous.
-const sl3AscentRows = [
-  "##############################",
-  "##############################",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#.......####..####..####.....#",  // 13 platforms
-  " ............................ ",
-  " ............................ ",
-  "######..................######",
-  "######..................######",
-];
+// SL3 Room 5: Parry Room — the pickup sits on the elevated middle route.
+const sl3ParryRoomRows = makeSl3TraversalRows([
+  { row: 12, start: 6, width: 5 },
+  { row: 9, start: 13, width: 5 },
+  { row: 12, start: 22, width: 5 },
+]);
 
-// SL3 Room 9: Approach — 3 platforms + save shrine on left landing + pierce re-grant.
-const sl3ApproachRows = [
-  "##############################",
-  "##############################",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#............................#",
-  "#.......####..####..####.....#",  // 13 platforms (pierce pickup on platform A cols 8-11)
-  " ............................ ",
-  " ............................ ",
-  "######..................######",
-  "######..................######",
-];
+// SL3 Room 6: Lava Hall — four staggered platforms over the turret gauntlet.
+const sl3LavaHallRows = makeSl3TraversalRows([
+  { row: 13, start: 6, width: 5 },
+  { row: 10, start: 12, width: 4, spikes: [14] },
+  { row: 12, start: 18, width: 5 },
+  { row: 9, start: 24, width: 4 },
+]);
+
+// SL3 Room 7: Hall D — alternating low/high landings punish a flat jump arc.
+const sl3HallDRows = makeSl3TraversalRows([
+  { row: 10, start: 6, width: 5 },
+  { row: 13, start: 13, width: 5 },
+  { row: 8, start: 20, width: 5 },
+  { row: 12, start: 25, width: 4 },
+]);
+
+// SL3 Room 8: Ascent — a broad staircase that demands repeated double jumps.
+const sl3AscentRows = makeSl3TraversalRows([
+  { row: 13, start: 6, width: 5 },
+  { row: 10, start: 11, width: 5 },
+  { row: 7, start: 17, width: 5 },
+  { row: 10, start: 24, width: 5, spikes: [26] },
+]);
+
+// SL3 Room 9: Approach — the final sustained climb before the Terror.
+const sl3ApproachRows = makeSl3TraversalRows([
+  { row: 12, start: 6, width: 5 },
+  { row: 9, start: 12, width: 5 },
+  { row: 6, start: 19, width: 4 },
+  { row: 10, start: 24, width: 5 },
+]);
 
 // SL3 Room 10: Boss — tall 36-row arena. Kraid fills the right wall.
 // Left door only (rows 16-17). Camera scrolls vertically to follow player.
@@ -1094,7 +1006,7 @@ export const ROOMS: Record<string, RoomDef> = {
         kind: "sovereign",
         x: 22 * TILE - 34,
         y: 14 * TILE - 36,
-        hp: 24,
+        hp: 27,
       },
     ],
     pickups: [],
@@ -1410,7 +1322,7 @@ export const ROOMS: Record<string, RoomDef> = {
     enemies: [
       { kind: "wraith", x: 7 * TILE, y: 8 * TILE, patrolMin: 3 * TILE, patrolMax: 12 * TILE },
       { kind: "wraith", x: 20 * TILE, y: 8 * TILE, patrolMin: 15 * TILE, patrolMax: 26 * TILE },
-      { kind: "turret", x: 14 * TILE, y: 14 * TILE, hp: 4 },
+      { kind: "redturret", x: 14 * TILE, y: 14 * TILE, hp: 4 },
     ],
     pickups: [],
     doors: [
@@ -1444,8 +1356,8 @@ export const ROOMS: Record<string, RoomDef> = {
       { kind: "bat", x: 20 * TILE, y: 6 * TILE, patrolMin: 12 * TILE, patrolMax: 26 * TILE },
     ],
     pickups: [
-      // Parry pickup on the middle platform (cols 14-17, row 13)
-      { kind: "ability", ability: "parry", x: 16 * TILE, y: 13 * TILE - 4, id: "parry-sl3" },
+      // Parry pickup on the elevated middle platform (cols 13-17, row 9)
+      { kind: "ability", ability: "parry", x: 16 * TILE, y: 9 * TILE - 4, id: "parry-sl3" },
     ],
     doors: [
       { x: 0, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_hall_c", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
@@ -1458,8 +1370,8 @@ export const ROOMS: Record<string, RoomDef> = {
     sublayer: 3,
     tiles: parseTiles(sl3LavaHallRows),
     enemies: [
-      { kind: "turret", x: 4 * TILE, y: 14 * TILE, hp: 4 },
-      { kind: "turret", x: 25 * TILE, y: 14 * TILE, hp: 4 },
+      { kind: "redturret", x: 4 * TILE, y: 14 * TILE, hp: 4 },
+      { kind: "redturret", x: 25 * TILE, y: 14 * TILE, hp: 4 },
       { kind: "bat", x: 13 * TILE, y: 5 * TILE, patrolMin: 8 * TILE, patrolMax: 20 * TILE },
       { kind: "bat", x: 19 * TILE, y: 9 * TILE, patrolMin: 12 * TILE, patrolMax: 26 * TILE },
     ],
@@ -1477,7 +1389,7 @@ export const ROOMS: Record<string, RoomDef> = {
     enemies: [
       { kind: "wraith", x: 8 * TILE, y: 8 * TILE, patrolMin: 4 * TILE, patrolMax: 12 * TILE },
       { kind: "wraith", x: 21 * TILE, y: 8 * TILE, patrolMin: 17 * TILE, patrolMax: 26 * TILE },
-      { kind: "turret", x: 14 * TILE, y: 14 * TILE, hp: 4 },
+      { kind: "redturret", x: 14 * TILE, y: 14 * TILE, hp: 4 },
     ],
     pickups: [],
     doors: [
@@ -1509,10 +1421,7 @@ export const ROOMS: Record<string, RoomDef> = {
       { kind: "wraith", x: 10 * TILE, y: 8 * TILE, patrolMin: 4 * TILE, patrolMax: 16 * TILE },
       { kind: "wraith", x: 20 * TILE, y: 8 * TILE, patrolMin: 14 * TILE, patrolMax: 26 * TILE },
     ],
-    pickups: [
-      // Pierce re-grant on first stepping platform (cols 8-11, row 13)
-      { kind: "ability", ability: "pierce", x: 9 * TILE, y: 13 * TILE - 4, id: "pierce-approach" },
-    ],
+    pickups: [],
     doors: [
       { x: 0, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_ascent", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
       { x: 29 * TILE, y: 14 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_boss", toX: 6 * TILE, toY: 16 * TILE, facing: "right" },
@@ -1528,10 +1437,7 @@ export const ROOMS: Record<string, RoomDef> = {
       // Kraid — fully immobile wall boss. Occupies right side of the tall room.
       { kind: "kraid", x: 21 * TILE, y: 2 * TILE, hp: 48 },
     ],
-    pickups: [
-      // Pierce shard on the first platform — collect before attacking cores.
-      { kind: "ability", ability: "pierce", x: 4 * TILE, y: 8 * TILE - 4, id: "pierce-sl3-boss" },
-    ],
+    pickups: [],
     doors: [
       { x: 0, y: 16 * TILE, w: TILE, h: TILE * 2, toRoom: "sl3_approach", toX: 27 * TILE, toY: 14 * TILE, facing: "left" },
     ],

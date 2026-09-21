@@ -1,8 +1,8 @@
-import { ROOM_H, ROOM_W, TILE } from "./constants";
+import { TILE } from "./constants";
 import type { Rect } from "./types";
 
 export function tileAt(tiles: number[][], col: number, row: number): number {
-  if (col < 0 || col >= ROOM_W || row < 0 || row >= ROOM_H) return 1;
+  if (col < 0 || col >= (tiles[0]?.length ?? 0) || row < 0 || row >= tiles.length) return 1;
   return tiles[row][col];
 }
 
@@ -60,12 +60,12 @@ function overlapsSolid(
 ) {
   const minCol = Math.floor(body.x / TILE);
   const maxCol = Math.floor((body.x + body.w - 0.001) / TILE);
-  const minRow = Math.floor(body.y / TILE);
-  const maxRow = Math.floor((body.y + body.h - 0.001) / TILE);
-  for (let r = minRow; r <= maxRow; r++) {
-    for (let c = minCol; c <= maxCol; c++) {
-      if (tileAt(tiles, c, r) === 1) return true;
-    }
+  // A ground probe must only inspect the player's bottom edge. Checking the
+  // full body lets a wall or the side of a platform count as support, which
+  // can make the player hover in the tall Ancient Terror arena.
+  const bottomRow = Math.floor((body.y + body.h - 0.001) / TILE);
+  for (let c = minCol; c <= maxCol; c++) {
+    if (tileAt(tiles, c, bottomRow) === 1) return true;
   }
   return false;
 }

@@ -1,0 +1,20 @@
+Add a new non-boss enemy in sublayer 3. Make a red turret, which fires red projectiles. These projectiles cannot be parried. Add some text to explain this. The Ancient terror and future bosses will also fire these occasionally. The Ancient terror’s version causes spikes to appear on any platform that it collides with. This boss needs to be the hardest yet.
+There are a few remaining things to fix. The first one is that the ancient terror is easily beaten if you don’t move. After enough damage, a weak point must be destroyed. The boss is only defeated after all weak points have been destroyed. Also, make those spikes actually do collision damage. They can also be fired off as projectiles. Remove the pierce shard in “before the terror”.
+Prevent projectile from persisting if you die and respawn.
+Replace any text that appears on screen that talks about the boss nicknames that I have used to tell you about the bosses such as “hunter” and “Kraid” with the names that appear above their health bar. Make sure to also apply this to leaderboard times.  
+Make the platforming in sublayer 3 more advanced and difficult. This needs to be difficult. Nothing pixel perfect though.
+If you are going to add spots where you can fall, make the player disappear off screen, take a heart of damage and respawn as if they have just entered the room.
+The ancient terror boss room is glitched. The player can just float in the air.
+In the room that you spawn in, add some text that says: “Find the double jump ability”. This disappears upon obtaining the double jump.
+In the Cracked Tunnel add an arrow in the center of the room pointing downwards. This arrow will disappear after obtaining the double jump.
+Add “Move to the room below” to the controls with the down arrow key as the button displayed.
+The phase dash pickup incorrectly says that you can use shift to use it.
+Remove the “Refresh to descend again” text.
+Lock the player in sublayer 2 until they have defeated the hunter.
+Prevent the hunter from respawning after defeating it.
+Remove “Click the canvas first if keys do nothing” text.
+Remove “Built in canvas” from “Hollow Depths — a 2D metroidvania built in canvas” text.
+The pause menu incorrectly says that the phantom veil is activated by q. Change it to z.
+As shown in the image, the player is stuck along an invisible wall in the boss fight room.
+Remove the pierce shard
+Add a collision feature for the floating trackers so that they collide with platforms. Right now, a bug is causing them to teleport when they collide with the platform so fix the collision. Maybe program them in a similar way to the hunter.

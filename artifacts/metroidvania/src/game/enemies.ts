@@ -30,8 +30,11 @@ export interface Enemy {
     | "dash_charge"
     | "dashing"
     | "aim_charge"
+    | "spike_volley"
     | "recover";
   damage: number;
+  // Kraid only: per-core health tracking (3 cores)
+  coreHps?: number[];
 }
 
 export function createEnemy(spawn: EnemySpawn): Enemy {
@@ -77,6 +80,12 @@ export function createEnemy(spawn: EnemySpawn): Enemy {
       base.hp = spawn.hp ?? 3;
       base.maxHp = base.hp;
       break;
+    case "redturret":
+      base.w = 30;
+      base.h = 30;
+      base.hp = spawn.hp ?? 3;
+      base.maxHp = base.hp;
+      break;
     case "boss":
       base.w = 60;
       base.h = 60;
@@ -100,14 +109,17 @@ export function createEnemy(spawn: EnemySpawn): Enemy {
       base.damage = 1;
       base.cooldown = 60;
       break;
-    case "kraid":
+    case "kraid": {
+      const coreMaxHp = 16;
       base.w = 8 * TILE;
       base.h = 32 * TILE;
-      base.hp = spawn.hp ?? 48;
+      base.hp = coreMaxHp * 3;
       base.maxHp = base.hp;
       base.damage = 1;
       base.cooldown = 100;
+      base.coreHps = [coreMaxHp, coreMaxHp, coreMaxHp];
       break;
+    }
   }
   return base;
 }
@@ -124,4 +136,8 @@ export interface Projectile {
   damage: number;
   pierce?: boolean;
   hitEnemies?: Set<Enemy>;
+  /** If true, this projectile cannot be parried/reflected */
+  unparriable?: boolean;
+  /** If true, hitting a solid tile spawns a spike hazard instead of just disappearing */
+  spike?: boolean;
 }

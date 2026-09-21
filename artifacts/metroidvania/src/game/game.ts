@@ -20,6 +20,7 @@ import {
   PHANTOM_RECHARGE,
   PROJECTILE_LIFE,
   PROJECTILE_SPEED,
+  ROOM_W,
   SHOOT_COOLDOWN,
   TILE,
   VIEW_H,
@@ -86,6 +87,7 @@ export interface GameState {
   projectiles: Projectile[];
   particles: Particle[];
   texts: FloatingText[];
+  spikeHazards: SpikeHazard[];
   transition: PendingTransition | null;
   paused: boolean;
   gameTime: number;
@@ -105,6 +107,12 @@ export interface GameState {
   hunterDefeated: boolean;
   kraidDefeated: boolean;
   kraidDefeatedTime: number | null;
+  // Room entry position for pit-fall respawn
+  roomEntryX: number;
+  roomEntryY: number;
+  pitRespawnTimer: number;
+  // Warning banner for unparriable red turrets
+  redTurretWarningTimer: number;
   // Run stats — recorded for the leaderboard
   deaths: number;
   hollowDefeatedTime: number | null;
@@ -113,6 +121,14 @@ export interface GameState {
   playerHpAtHollow: number;
   playerHpAtSovereign: number;
   playerHpAtHunter: number;
+}
+
+export interface SpikeHazard {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  life: number;
 }
 
 export interface Particle {
@@ -163,6 +179,11 @@ export function createGame(): GameState {
     hunterDefeated: false,
     kraidDefeated: false,
     kraidDefeatedTime: null,
+    spikeHazards: [],
+    roomEntryX: STARTING_POS.x,
+    roomEntryY: STARTING_POS.y,
+    pitRespawnTimer: 0,
+    redTurretWarningTimer: 0,
     deaths: 0,
     hollowDefeatedTime: null,
     sovereignDefeatedTime: null,
@@ -284,6 +305,7 @@ function performTransition(g: GameState) {
   const toRoom = g.rooms[t.to]?.def;
   g.currentRoomId = t.to;
   g.projectiles = [];
+  g.spikeHazards = [];
   g.camY = 0;
   const p = g.player;
   p.x = t.toX;
@@ -293,6 +315,8 @@ function performTransition(g: GameState) {
   p.dashTimer = 0;
   p.knockback = 0;
   p.transitionCooldown = 30;
+  g.roomEntryX = t.toX;
+  g.roomEntryY = t.toY;
   p.phantomActive = false;
   if (t.facing === "right") p.facing = 1;
   if (t.facing === "left") p.facing = -1;
@@ -309,6 +333,9 @@ function performTransition(g: GameState) {
       g.hunter = createHunter("sl2_pierce_shrine");
       g.hunterAppearTimer = 180;
     }
+  }
+  if (toRoom?.enemies.some((enemy) => enemy.kind === "redturret")) {
+    g.redTurretWarningTimer = 210;
   }
 }
 
@@ -347,6 +374,127 @@ function tryParry(g: GameState) {
     gravity: 0,
     life: 20,
   });
+}
+
+function spawnSpikeHazard(g: GameState, x: number, y: number) {
+  const hazard: SpikeHazard = {
+    x: Math.max(0, Math.min(x - 12, ROOM_W * TILE - 24)),
+    y: y - 12,
+    w: 24,
+    h: 12,
+    life: 360,
+  };
+  const duplicate = g.spikeHazards.some(
+    (existing) =>
+      Math.abs(existing.x - hazard.x) < 18 &&
+      Math.abs(existing.y - hazard.y) < 18,
+  );
+  if (!duplicate) {
+    g.spikeHazards.push(hazard);
+    if (g.spikeHazards.length > 18) g.spikeHazards.shift();
+  }
+}
+
+function updateSpikeHazards(g: GameState) {
+  const p = g.player;
+  for (let i = g.spikeHazards.length - 1; i >= 0; i--) {
+    const hazard = g.spikeHazards[i];
+    hazard.life--;
+    if (hazard.life <= 0) {
+      g.spikeHazards.splice(i, 1);
+      continue;
+    }
+    if (
+      p.alive &&
+      p.invuln === 0 &&
+      rectOverlap(
+        { x: p.x, y: p.y, w: p.w, h: p.h },
+        { x: hazard.x, y: hazard.y, w: hazard.w, h: hazard.h },
+      )
+    ) {
+      damagePlayer(p, hazard.x + hazard.w / 2);
+      g.shake = Math.max(g.shake, 8);
+    }
+  }
+}
+
+function isTouchingSpikeTile(
+  body: { x: number; y: number; w: number; h: number },
+  tiles: number[][],
+) {
+  const minCol = Math.floor(body.x / TILE);
+  const maxCol = Math.floor((body.x + body.w - 0.001) / TILE);
+  const minRow = Math.floor(body.y / TILE);
+  const maxRow = Math.floor((body.y + body.h - 0.001) / TILE);
+  for (let row = minRow; row <= maxRow; row++) {
+    for (let col = minCol; col <= maxCol; col++) {
+      if (tiles[row]?.[col] === 2) return true;
+    }
+  }
+  return false;
+}
+
+function handlePitFall(g: GameState) {
+  const room = currentRoom(g);
+  const p = g.player;
+  if (room.def.sublayer !== 3 || p.y + p.h < room.def.tiles.length * TILE) {
+    return false;
+  }
+
+  // A pit is a room-entry reset, not a normal enemy hit. Force exactly one
+  // heart of damage even if the player was briefly invulnerable from another
+  // collision, then let the player visibly leave the room before returning.
+  const fallX = p.x + p.w / 2;
+  const fallY = p.y + p.h / 2;
+  p.invuln = 0;
+  damagePlayer(p, fallX);
+  if (!p.alive) return true;
+
+  spawnParticles(g, fallX, fallY, 10, "#ff8060", {
+    spread: 5,
+    gravity: 0.08,
+    life: 26,
+  });
+  g.pitRespawnTimer = 30;
+  p.x = -p.w * 2;
+  p.y = room.def.tiles.length * TILE + TILE * 2;
+  p.vx = 0;
+  p.vy = 0;
+  p.knockback = 0;
+  p.dashTimer = 0;
+  p.parryTimer = 0;
+  p.phantomActive = false;
+  g.projectiles = [];
+  g.spikeHazards = [];
+  g.shake = Math.max(g.shake, 12);
+  g.texts.push({
+    x: fallX,
+    y: fallY - 16,
+    text: "The pit tears at you",
+    life: 90,
+    vy: -0.25,
+    color: "#ff8060",
+  });
+  return true;
+}
+
+function finishPitRespawn(g: GameState) {
+  const p = g.player;
+  p.x = g.roomEntryX;
+  p.y = g.roomEntryY;
+  p.vx = 0;
+  p.vy = 0;
+  p.dashTimer = 0;
+  p.dashCooldown = 0;
+  p.knockback = 0;
+  p.parryTimer = 0;
+  p.phantomActive = false;
+  p.transitionCooldown = 30;
+  p.invuln = 60;
+  g.pitRespawnTimer = 0;
+  g.projectiles = [];
+  g.spikeHazards = [];
+  g.camY = 0;
 }
 
 // BFS through the Sublayer 2 adjacency graph to pick the next room the hunter
@@ -547,8 +695,25 @@ export function updateGame(g: GameState, input: InputState) {
     g.abilityToast.timer--;
     if (g.abilityToast.timer <= 0) g.abilityToast = null;
   }
+  if (g.redTurretWarningTimer > 0) g.redTurretWarningTimer--;
+
+  if (g.pitRespawnTimer > 0) {
+    g.projectiles = [];
+    g.spikeHazards = [];
+    g.pitRespawnTimer--;
+    if (g.pitRespawnTimer <= 0) {
+      finishPitRespawn(g);
+    }
+    clearPressed(input);
+    return;
+  }
 
   if (!p.alive) {
+    // Remove all combat entities immediately on death. Waiting for the
+    // respawn timer would let enemy shots remain visible during the death
+    // animation and potentially carry into the next room state.
+    g.projectiles = [];
+    g.spikeHazards = [];
     p.deathTimer--;
     if (p.deathTimer <= 0) {
       respawnPlayer(g);
@@ -671,9 +836,14 @@ export function updateGame(g: GameState, input: InputState) {
     p.coyote--;
   }
 
-  if (move.spike) {
+  if (move.spike || isTouchingSpikeTile(p, room.def.tiles)) {
     damagePlayer(p, p.x + p.w / 2);
     g.shake = 8;
+  }
+  updateSpikeHazards(g);
+  if (handlePitFall(g)) {
+    clearPressed(input);
+    return;
   }
 
   // Check doors
@@ -797,6 +967,12 @@ export function updateGame(g: GameState, input: InputState) {
       }
     }
   }
+  if (!p.alive) {
+    g.projectiles = [];
+    g.spikeHazards = [];
+    clearPressed(input);
+    return;
+  }
 
   // Update projectiles
   for (let i = g.projectiles.length - 1; i >= 0; i--) {
@@ -807,14 +983,22 @@ export function updateGame(g: GameState, input: InputState) {
     // Wall collision
     const col = Math.floor((pr.x + pr.w / 2) / TILE);
     const row = Math.floor((pr.y + pr.h / 2) / TILE);
-    if (
+    const outOfBounds =
       col < 0 ||
       col >= room.def.tiles[0].length ||
       row < 0 ||
-      row >= room.def.tiles.length ||
-      room.def.tiles[row][col] === 1
-    ) {
-      spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 4, "#caf6ff", {
+      row >= room.def.tiles.length;
+    const hitSolid =
+      !outOfBounds && room.def.tiles[row]?.[col] === 1;
+    if (outOfBounds || hitSolid) {
+      if (hitSolid && pr.spike) {
+        spawnSpikeHazard(
+          g,
+          pr.x + pr.w / 2,
+          row * TILE,
+        );
+      }
+      spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 4, pr.unparriable ? "#ff4020" : "#caf6ff", {
         spread: 2,
         gravity: 0,
         life: 14,
@@ -839,13 +1023,54 @@ export function updateGame(g: GameState, input: InputState) {
         ) {
           continue;
         }
-        // Kraid: always armored (pierce only, core hits only).
+        // The Ancient Terror is only vulnerable through its three individual cores.
+        // Regular shots can damage a living core; Pierce is not required here.
+        if (e.kind === "kraid") {
+          const coreHps = e.coreHps ?? [];
+          const coreCenters = [
+            e.y + 4 * TILE + TILE / 2,
+            e.y + 16 * TILE + TILE / 2,
+            e.y + 28 * TILE + TILE / 2,
+          ];
+          let coreIndex = -1;
+          let closest = Number.POSITIVE_INFINITY;
+          for (let ci = 0; ci < coreCenters.length; ci++) {
+            if (coreHps[ci] <= 0) continue;
+            const distance = Math.abs(pr.y + pr.h / 2 - coreCenters[ci]);
+            if (distance < closest) {
+              closest = distance;
+              coreIndex = ci;
+            }
+          }
+          if (coreIndex < 0 || closest > TILE * 1.5) {
+            spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 4, "#8a4010", {
+              spread: 2,
+              gravity: 0,
+              life: 12,
+            });
+            g.projectiles.splice(i, 1);
+            consumed = true;
+            break;
+          }
+          coreHps[coreIndex] -= pr.damage;
+          e.hp = coreHps.reduce((total, hp) => total + Math.max(0, hp), 0);
+          e.hitFlash = 8;
+          spawnParticles(
+            g,
+            pr.x + pr.w / 2,
+            pr.y + pr.h / 2,
+            coreHps[coreIndex] <= 0 ? 14 : 6,
+            coreHps[coreIndex] <= 0 ? "#ff4010" : "#ffd060",
+            { spread: 3, gravity: 0, life: 20 },
+          );
+        }
+        // Sovereign: always armored. Boss: armored only while charging/dashing.
         // Sovereign: always armored. Boss: armored only while charging/dashing.
         const armored =
-          e.kind === "kraid" ||
-          e.kind === "sovereign" ||
-          (e.kind === "boss" && (e.state === "dash_charge" || e.state === "dashing"));
-        if (armored && !pr.pierce) {
+          e.kind !== "kraid" &&
+          (e.kind === "sovereign" ||
+            (e.kind === "boss" && (e.state === "dash_charge" || e.state === "dashing")));
+        if (e.kind !== "kraid" && armored && !pr.pierce) {
           spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 5, "#ffb060", {
             spread: 3,
             gravity: 0,
@@ -855,20 +1080,7 @@ export function updateGame(g: GameState, input: InputState) {
           consumed = true;
           break;
         }
-        // Kraid core check: piercing shot must hit near one of the three
-        // exposed cores (at e.y+4*TILE, e.y+16*TILE, e.y+28*TILE).
-        if (e.kind === "kraid") {
-          const coreCenters = [e.y + 4 * TILE + TILE / 2, e.y + 16 * TILE + TILE / 2, e.y + 28 * TILE + TILE / 2];
-          const prCY = pr.y + pr.h / 2;
-          const nearCore = coreCenters.some((cy) => Math.abs(prCY - cy) < TILE * 2);
-          if (!nearCore) {
-            spawnParticles(g, pr.x + pr.w / 2, pr.y + pr.h / 2, 4, "#8a4010", { spread: 2, gravity: 0, life: 12 });
-            g.projectiles.splice(i, 1);
-            consumed = true;
-            break;
-          }
-        }
-        e.hp -= pr.damage;
+        if (e.kind !== "kraid") e.hp -= pr.damage;
         e.hitFlash = 8;
         spawnParticles(
           g,
@@ -943,7 +1155,7 @@ export function updateGame(g: GameState, input: InputState) {
           { x: p.x, y: p.y, w: p.w, h: p.h },
         )
       ) {
-        if (p.parryTimer > 0) {
+        if (p.parryTimer > 0 && !pr.unparriable) {
           // Parry: reflect the projectile back as a piercing player shot
           pr.fromPlayer = true;
           pr.vx = -pr.vx * 1.4;
@@ -963,6 +1175,10 @@ export function updateGame(g: GameState, input: InputState) {
         }
       }
     }
+  }
+  if (!p.alive) {
+    g.projectiles = [];
+    g.spikeHazards = [];
   }
 
   // Hunter (Sovereign wraith) — only present in Sublayer 2
@@ -1061,6 +1277,7 @@ export function updateGame(g: GameState, input: InputState) {
 function respawnPlayer(g: GameState) {
   g.deaths++;
   const p = g.player;
+  g.pitRespawnTimer = 0;
   p.alive = true;
   p.hp = p.maxHp;
   p.invuln = 60;
@@ -1069,12 +1286,18 @@ function respawnPlayer(g: GameState) {
   p.dashTimer = 0;
   p.dashCooldown = 0;
   p.knockback = 0;
+  p.parryTimer = 0;
+  p.phantomActive = false;
+  g.projectiles = [];
+  g.spikeHazards = [];
   p.x = p.spawnX;
   p.y = p.spawnY;
   // Reset enemies in current room
   if (p.spawnRoom !== g.currentRoomId) {
     g.currentRoomId = p.spawnRoom;
   }
+  g.roomEntryX = p.spawnX;
+  g.roomEntryY = p.spawnY;
   for (const room of Object.values(g.rooms)) {
     for (let i = 0; i < room.enemies.length; i++) {
       const spawn = room.def.enemies[i];
@@ -1104,6 +1327,8 @@ function enemyColor(kind: Enemy["kind"]): string {
       return "#c050e0";
     case "turret":
       return "#ff7050";
+    case "redturret":
+      return "#e21f18";
     case "boss":
       return "#ff3060";
     case "wraith":
@@ -1202,6 +1427,36 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
       }
       break;
     }
+    case "redturret": {
+      e.cooldown--;
+      const dx = p.x + p.w / 2 - (e.x + e.w / 2);
+      const dy = p.y + p.h / 2 - (e.y + e.h / 2);
+      e.facing = dx >= 0 ? 1 : -1;
+      const dist = Math.hypot(dx, dy);
+      if (!p.phantomActive && dist < 360 && e.cooldown <= 0) {
+        e.cooldown = 78;
+        const norm = 1 / (dist || 1);
+        g.projectiles.push({
+          x: e.x + e.w / 2 - 6,
+          y: e.y + e.h / 2 - 6,
+          vx: dx * norm * 5.2,
+          vy: dy * norm * 5.2,
+          life: 125,
+          w: 12,
+          h: 12,
+          fromPlayer: false,
+          damage: 1,
+          unparriable: true,
+        });
+        g.redTurretWarningTimer = Math.max(g.redTurretWarningTimer, 150);
+        spawnParticles(g, e.x + e.w / 2, e.y + e.h / 2, 5, "#ff3020", {
+          spread: 2,
+          gravity: 0,
+          life: 14,
+        });
+      }
+      break;
+    }
     case "wraith": {
       // Floats freely toward the player on both axes; ignores gravity.
       // Phantom veil makes player invisible to wraiths — they hover in place.
@@ -1214,34 +1469,14 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
       e.vy = (dy / dist) * speed + Math.sin(e.phase) * 0.4;
       if (p.phantomActive) { e.vx *= 0.85; e.vy *= 0.85; }
       e.facing = dx >= 0 ? 1 : -1;
-      // Soft tile collision (push out without sticking)
-      e.x += e.vx;
-      e.y += e.vy;
-      const minCol = Math.floor(e.x / TILE);
-      const maxCol = Math.floor((e.x + e.w - 0.001) / TILE);
-      const minRow = Math.floor(e.y / TILE);
-      const maxRow = Math.floor((e.y + e.h - 0.001) / TILE);
-      for (let r = minRow; r <= maxRow; r++) {
-        for (let c = minCol; c <= maxCol; c++) {
-          if (
-            r >= 0 &&
-            r < tiles.length &&
-            c >= 0 &&
-            c < tiles[0].length &&
-            tiles[r][c] === 1
-          ) {
-            if (e.vx > 0) e.x = c * TILE - e.w;
-            else if (e.vx < 0) e.x = (c + 1) * TILE;
-            if (e.vy > 0) e.y = r * TILE - e.h;
-            else if (e.vy < 0) e.y = (r + 1) * TILE;
-          }
-        }
-      }
+      // Use the common collision solver so the wraith cannot tunnel through
+      // tall-room walls or get stuck inside a corner.
+      moveAndCollide(e, tiles);
       break;
     }
     case "kraid": {
-      // Ancient Terror — fully immobile wall boss. Fires from three cores.
-      // Only pierce shard shots near a core deal damage.
+      // Ancient Terror — fully immobile wall boss. Its three cores are the
+      // only targets, and every core must be destroyed before it can die.
       e.phase += 0.015;
       e.cooldown--;
       // No movement whatsoever — permanently affixed to the right wall.
@@ -1271,14 +1506,18 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
           // Fan of projectiles from each core leftward toward player
           const shots = hpPct2 < 0.5 ? 5 : 3;
           const half = (shots - 1) / 2;
-          for (const cy of cores) {
+          for (let ci = 0; ci < cores.length; ci++) {
+            if ((e.coreHps?.[ci] ?? 0) <= 0) continue;
+            const cy = cores[ci];
             for (let fi = -half; fi <= half; fi++) {
               const ang = Math.PI + fi * 0.24;
               g.projectiles.push({
                 x: e.x - 7, y: cy + TILE / 2 - 7,
                 vx: Math.cos(ang) * 4.5, vy: Math.sin(ang) * 4.5,
                 life: 180, w: 14, h: 14,
-                fromPlayer: false, damage: 1,
+                 fromPlayer: false, damage: 1,
+                 unparriable: Math.random() < (hpPct2 < 0.5 ? 0.34 : 0.2),
+                 spike: true,
               });
             }
           }
@@ -1297,7 +1536,9 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
               x: ox - 7, y: oy - 7,
               vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
               life: 190, w: 14, h: 14,
-              fromPlayer: false, damage: 1,
+               fromPlayer: false, damage: 1,
+               unparriable: Math.random() < (hpPct2 < 0.5 ? 0.38 : 0.22),
+               spike: true,
             });
           }
           e.state = "recover";
@@ -1313,7 +1554,9 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
               x: e.x - 14, y: oy - 7,
               vx: -6, vy: (Math.random() - 0.5) * 3.5,
               life: 140, w: 14, h: 14,
-              fromPlayer: false, damage: 1,
+               fromPlayer: false, damage: 1,
+               unparriable: Math.random() < (hpPct2 < 0.5 ? 0.42 : 0.25),
+               spike: true,
             });
           }
           g.shake = Math.max(g.shake, 14);
@@ -1391,6 +1634,7 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
               h: 14,
               fromPlayer: false,
               damage: 1,
+              unparriable: Math.random() < (isSovereign ? 0.18 : phase2 ? 0.16 : 0.08),
             });
           }
           e.state = "recover";
@@ -1415,6 +1659,7 @@ function updateEnemy(g: GameState, e: Enemy, tiles: number[][]) {
               h: 12,
               fromPlayer: false,
               damage: 1,
+              unparriable: Math.random() < (isSovereign ? 0.14 : phase2 ? 0.12 : 0.06),
             });
           }
           e.state = "recover";

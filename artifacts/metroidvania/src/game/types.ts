@@ -12,7 +12,7 @@ export type AbilityKey =
 
 export type Abilities = Record<AbilityKey, boolean>;
 
-export type EnemyKind = "slime" | "bat" | "turret" | "boss" | "wraith" | "sovereign" | "kraid";
+export type EnemyKind = "slime" | "bat" | "turret" | "redturret" | "boss" | "wraith" | "sovereign" | "kraid";
 
 export interface EnemySpawn {
   kind: EnemyKind;

@@ -151,8 +151,9 @@ function PauseOverlay({
           <Control label="Jump" keys={["↑"]} />
           <Control label="Dash" keys={["X"]} />
           <Control label="Strike" keys={["C"]} />
-          <Control label="Phantom Veil" keys={["Q (hold)"]} />
+          <Control label="Phantom Veil" keys={["Z (hold)"]} />
           <Control label="Parry" keys={["V"]} />
+          <Control label="Move to room below" keys={["↓"]} />
           <Control label="Pause" keys={["Esc"]} />
         </div>
         <div className="pause-actions">
@@ -206,24 +207,24 @@ function QuitConfirmModal({
 
 const CHANGELOG = [
   { version: "v0.4.1", date: "June 2026", notes: [
-    "Sublayer 3 — The Sunken Wound: ten rooms, Kraid wall boss (true ending)",
-    "Kraid: fully immobile wall boss with 3 glowing cores — pierce required",
+    "Sublayer 3 — The Sunken Wound: ten rooms, Ancient Terror wall boss (true ending)",
+    "Ancient Terror: fully immobile wall boss with 3 destructible cores",
     "SL3 rooms: pit+platform structure, must jump across to reach next door",
     "Sovereign is always armored (visual change)",
-    "Sovereign HP reduced 32 → 24",
+    "Ember Sovereign health increased for a stronger rematch",
     "New ability: Void Parry (V) — reflect projectiles, stun enemies",
     "Terms & conditions popup added (first launch)",
-    "Leaderboard now tracks Hunter-slain time",
+    "Leaderboard now tracks Sovereign's Wraith slain time",
   ]},
   { version: "v0.4", date: "June 2026", notes: [
-    "Sublayer 3 teaser: initial layout and Kraid placeholder",
+    "Sublayer 3 teaser: initial layout and Ancient Terror placeholder",
     "Phantom Veil now hides player from non-boss enemies and turrets",
-    "Hunter AI now jumps over platform obstacles",
+    "Sovereign's Wraith AI now jumps over platform obstacles",
   ]},
   { version: "v0.3", date: "May 2026", notes: [
-    "Sublayer 2 — The Hollow Labyrinth: 6 rooms, Phantom Veil, Hunter",
-    "Sovereign defeat removes Pierce Shard and spawns Hunter",
-    "Hunter tracks player via BFS room adjacency; only pierce damages it",
+    "Sublayer 2 — The Hollow Labyrinth: 6 rooms, Phantom Veil, Sovereign's Wraith",
+    "Sovereign defeat removes Pierce Shard and spawns the Sovereign's Wraith",
+    "The Sovereign's Wraith tracks player via room adjacency; only Pierce damages it",
   ]},
   { version: "v0.2", date: "April 2026", notes: [
     "Ember Sovereign boss in Sanctum (Sublayer 1)",
@@ -284,11 +285,11 @@ function TitleScreen({
           <Control label="Jump" keys={["↑"]} />
           <Control label="Dash" keys={["X"]} />
           <Control label="Strike" keys={["C"]} />
-          <Control label="Phantom Veil" keys={["Q (hold)"]} />
+          <Control label="Phantom Veil" keys={["Z (hold)"]} />
           <Control label="Parry" keys={["V"]} />
+          <Control label="Move to room below" keys={["↓"]} />
           <Control label="Pause" keys={["Esc"]} />
         </div>
-        <p className="title-hint">Click the canvas first if keys do nothing.</p>
       </div>
 
       {/* Updates button — bottom left */}
@@ -385,7 +386,7 @@ function VictoryScreen({
           <StatRow label="Deaths" value={String(game.deaths)} />
           <StatRow label="Hollow slain at" value={formatFrames(game.hollowDefeatedTime)} />
           <StatRow label="Sovereign slain at" value={formatFrames(game.sovereignDefeatedTime)} />
-          <StatRow label="Hunter slain at" value={formatFrames(game.hunterDefeatedTime ?? null)} />
+          <StatRow label="Sovereign's Wraith slain at" value={formatFrames(game.hunterDefeatedTime ?? null)} />
           <StatRow
             label="HP remaining"
             value={`${game.player.hp} / ${game.player.maxHp}`}
@@ -537,11 +538,11 @@ function LeaderboardScreen({
                               value={e.playerHpAtSovereign != null ? String(e.playerHpAtSovereign) : "—"}
                             />
                             <DetailStat
-                              label="Hunter slain at"
+                              label="The Sovereign's Wraith slain at"
                               value={formatFrames(e.hunterFrames)}
                             />
                             <DetailStat
-                              label="HP at Hunter kill"
+                              label="HP at Sovereign's Wraith kill"
                               value={e.playerHpAtHunter != null ? String(e.playerHpAtHunter) : "—"}
                             />
                           </div>
