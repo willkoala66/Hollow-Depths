@@ -1,0 +1,17 @@
+name: Deploy Hollow-Depths
+run-name: ${{ github.actor }} is Deploying Hollow-Depths
+on: [push, pull_request]
+jobs:
+  deploy:
+    env: 
+      BASE_PATH: "./"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/setup@v3
+        with:
+          runtime: node
+          node-version: '24'
+      - run: pnpm install
+      - run: pnpm build
+      - run: cd artifacts/metroidvania;PORT=8080 pnpm run dev
