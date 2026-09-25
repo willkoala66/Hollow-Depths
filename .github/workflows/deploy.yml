@@ -12,7 +12,7 @@ jobs:
         with:
           runtime: node@24
           version: 12
-          run_install: false
+          install: false
       - run: pnpm approve-build
       - run: pnpm install
       - run: pnpm build
