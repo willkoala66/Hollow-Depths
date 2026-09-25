@@ -1,6 +1,6 @@
 name: Deploy Hollow-Depths
 run-name: ${{ github.actor }} is Deploying Hollow-Depths
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
   pages: write
