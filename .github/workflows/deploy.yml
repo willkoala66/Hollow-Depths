@@ -10,8 +10,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: pnpm/setup@v3
         with:
-          runtime: node
-          node-version: '24'
+          runtime: node@24
       - run: pnpm install
       - run: pnpm build
       - run: cd artifacts/metroidvania;PORT=8080 pnpm run dev
