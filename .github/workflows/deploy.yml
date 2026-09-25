@@ -12,8 +12,6 @@ jobs:
         with:
           runtime: node@24
           version: 12
-          install: false
-      - run: pnpm approve-build esbuild
       - run: pnpm install
       - run: pnpm build
       - run: cd artifacts/metroidvania;PORT=8080 pnpm run dev
