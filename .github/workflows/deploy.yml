@@ -13,5 +13,5 @@ jobs:
           runtime: node@24
           version: 12
       - run: pnpm install
-      - run: pnpm build
+      - run: PORT=8080 pnpm build
       - run: cd artifacts/metroidvania;PORT=8080 pnpm run dev
