@@ -5,7 +5,7 @@
 
 ## Build and Run
 
-first build the root pnpm package
+first build the root(`/`) pnpm package
 > `/`
 > ```bash
 >  PORT=<port> BASE_PATH=<base url path> pnpm run build
@@ -16,3 +16,5 @@ then you need to go into the `artifacts/metroidvania` folder and run:
 > ```bash
 >  PORT=<port> BASE_PATH=<base url path> pnpm run dev
 > ```
+
+or you can run build in the `aretifacts/metroidvania` and serve the files under `dist/public`
