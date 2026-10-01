@@ -31,16 +31,14 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           name: metroidvania
-          path: |
-            artifacts/metroidvania/dist/public/
+          path: artifacts/metroidvania/dist/public/
           if-no-file-found: error
 
       - name: Upload Api-server
         uses: actions/upload-pages-artifact@v4
         with:
           name: api-server
-          path: |
-            artifacts/api-server/dist/
+          path: artifacts/api-server/dist/
   deploy:
     environment:
       name: github-pages
