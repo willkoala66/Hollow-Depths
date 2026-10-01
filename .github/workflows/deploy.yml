@@ -27,14 +27,20 @@ jobs:
       - name: Build
         run: PORT=8080 pnpm build
         
-      - name: Upload artifact
+      - name: Upload metroidvania
         uses: actions/upload-pages-artifact@v4
         with:
-          path: | 
-            artifacts/metroidvania/dist/public
-            artifacts/api-server/dist
-            artifacts/mockup-sandbox/dist
+          name: metroidvania
+          path: |
+            artifacts/metroidvania/dist/public/
           if-no-file-found: error
+
+      - name: Upload Api-server
+        uses: actions/upload-pages-artifact@v4
+        with:
+          name: api-server
+          path: |
+            artifacts/api-server/dist/
   deploy:
     environment:
       name: github-pages
@@ -46,3 +52,10 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+        with:
+            artifact_name: metroidvania
+      - name: deploy api
+        id: deployment-api
+        uses: actions/deploy-pages@v5
+        with:
+          artifact_name: api-server
