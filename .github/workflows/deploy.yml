@@ -9,6 +9,7 @@ jobs:
   build:
     env: 
       BASE_PATH: "/Hollow-Depths/"
+      DATABASE_URL: "postgresql://gasexwzu:gawqxseabmrhyiknabil@alpha.europe.mkdb.sh:5432/hcuwjytm"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -27,9 +28,10 @@ jobs:
         run: PORT=8080 pnpm build
         
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: artifacts/metroidvania/dist/public
+          path: artifacts/metroidvania/dist/public artifacts/api-server/dist artifacts/mockup-sandbox/dist
+          if-no-files-found: error
   deploy:
     environment:
       name: github-pages
