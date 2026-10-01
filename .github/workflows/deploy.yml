@@ -30,8 +30,11 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: artifacts/metroidvania/dist/public artifacts/api-server/dist artifacts/mockup-sandbox/dist
-          if-no-files-found: error
+          path: | 
+            artifacts/metroidvania/dist/public
+            artifacts/api-server/dist
+            artifacts/mockup-sandbox/dist
+          if-no-file-found: error
   deploy:
     environment:
       name: github-pages
