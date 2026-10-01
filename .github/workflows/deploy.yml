@@ -52,8 +52,4 @@ jobs:
         uses: actions/deploy-pages@v5
         with:
             artifact_name: metroidvania
-      - name: deploy api
-        id: deployment-api
-        uses: actions/deploy-pages@v5
-        with:
-          artifact_name: api-server
+      
