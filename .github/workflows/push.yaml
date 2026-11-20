@@ -1,6 +1,6 @@
 name: Gitlab-PUSH
 run-name: ${{ github.actor }} is Pushing to GitLab
-on: [push, pull_request, workflow_dispatch, commit]
+on: [push, pull_request, workflow_dispatch]
 jobs:
   push:
     runs-on: ubuntu-latest
