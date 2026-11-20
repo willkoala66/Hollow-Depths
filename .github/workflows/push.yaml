@@ -14,3 +14,4 @@ jobs:
         run: git remote add Gitlab https://glpat-KaLTdyr0dLWZzlnP1jK59WM6MQpvOjEKdTpxbDhieg8.01.171kfb4mc@gitlab.com/e4te-devs/Hollow-Depths.git
 
       - name: push to gitlab
+        run: git push Gitlab
