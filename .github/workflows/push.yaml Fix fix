@@ -11,7 +11,7 @@ jobs:
         # uses: pkg-src/github-action-git-bash@d7e3f57b86fcf5d919a5ba685d459583735b7611
         uses: pkg-src/github-action-git-bash@v1.1
       - name: Add remote to repo
-        run: git remote add Gitlab https://glpat-KaLTdyr0dLWZzlnP1jK59WM6MQpvOjEKdTpxbDhieg8.01.171kfb4mc@gitlab.com/e4te-devs/Hollow-Depths.git
+        run: git remote add Gitlab https://willkoalal66:glpat-KaLTdyr0dLWZzlnP1jK59WM6MQpvOjEKdTpxbDhieg8.01.171kfb4mc@gitlab.com/e4te-devs/Hollow-Depths.git
 
       - name: push to gitlab
         run: git push Gitlab
