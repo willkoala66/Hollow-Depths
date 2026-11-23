@@ -28,7 +28,6 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 ## Artifacts
 
-- **api-server** (`artifacts/api-server`) — Express API scaffold (not started by default).
 - **mockup-sandbox** (`artifacts/mockup-sandbox`) — Canvas component preview server.
 - **metroidvania** (`artifacts/metroidvania`) — "Hollow Depths", a 2D Metroidvania built in React + Vite.
   - Canvas-rendered (no sprite assets), dark purple/teal (Sublayer 1) and crimson (Sublayer 2) aesthetic.
@@ -37,3 +36,7 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   - **Sublayer 1 — Hollow Depths**: 10 interconnected rooms (cistern, antechamber, tunnel, boss_lair, rift, forge, sanctum, abyss, reach, vault) with ability-gated progression (double jump, dash, soul shard, pierce shard), save shrines, vessels, the Hollow boss, and the Ember Sovereign.
   - **Sublayer 2 — The Hollow Labyrinth**: 6 rooms (sl2_entry, sl2_north, sl2_pierce_shrine, sl2_west, sl2_hub, sl2_east) unlocked by defeating the Sovereign in Sanctum (drop portal in cistern). Defeating the Sovereign costs the player the Pierce Shard. Sublayer 2 introduces the **Phantom Veil** ability (hold Q/F to fade and slow — slip past the Hunter) and re-grants pierce at the Pierce Shrine. The Sovereign returns as a roving wraith Hunter that pursues the player across rooms via BFS adjacency; only Pierce Shard projectiles damage it. Killing the Hunter is the true ending.
   - Controls: arrows/WASD move, Z/K/Space jump, X/L/Shift dash, C/J strike, Q/F phantom veil (hold), Esc/P pause.
+
+## Shared services
+
+- **api-server** (`artifacts/api-server`) — Express API package serving Hollow Depths leaderboard and health routes at `/api`.
