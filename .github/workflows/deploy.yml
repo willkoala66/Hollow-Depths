@@ -26,7 +26,7 @@ jobs:
       - run: pnpm install
       
       - name: Build
-        run: PORT=8080 pnpm build
+        run: cd artifacts/metroidvania; PORT=8080 pnpm build
         
       - name: Upload metroidvania
         uses: actions/upload-pages-artifact@v4
