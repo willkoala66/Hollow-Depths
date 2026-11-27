@@ -26,6 +26,27 @@ if (!basePath) {
   );
 }
 
+const apiBaseUrl = process.env.VITE_API_BASE_URL?.trim();
+if (apiBaseUrl) {
+  let parsedApiBaseUrl: URL;
+  try {
+    parsedApiBaseUrl = new URL(apiBaseUrl);
+  } catch {
+    throw new Error("VITE_API_BASE_URL must be a valid HTTPS URL.");
+  }
+  if (
+    parsedApiBaseUrl.protocol !== "https:" ||
+    parsedApiBaseUrl.username ||
+    parsedApiBaseUrl.password ||
+    parsedApiBaseUrl.search ||
+    parsedApiBaseUrl.hash
+  ) {
+    throw new Error(
+      "VITE_API_BASE_URL must be an HTTPS URL without credentials, query, or fragment.",
+    );
+  }
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
