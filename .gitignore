@@ -47,3 +47,10 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+
+funnel.log
+database.txt
+build.log
+build-api.sh
+server.log
