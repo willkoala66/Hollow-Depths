@@ -20,6 +20,16 @@ interface LeaderboardEntry {
   createdAt: string;
 }
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, "");
+const requiresApiBaseUrl = import.meta.env.VITE_REQUIRE_API_BASE_URL === "true";
+const leaderboardUrl = apiBaseUrl
+  ? `${apiBaseUrl}/api/leaderboard`
+  : requiresApiBaseUrl
+    ? null
+    : "/api/leaderboard";
+const missingApiMessage =
+  "Leaderboard API is not configured. Set the PUBLIC_API_URL GitHub repository variable and rebuild.";
+
 function formatFrames(frames: number | null | undefined): string {
   if (frames == null) return "—";
   const ms = frames * (1000 / 60);
@@ -352,7 +362,8 @@ function VictoryScreen({
     if (!trimmed) return;
     setStatus("loading");
     try {
-      const res = await fetch("/api/leaderboard", {
+      if (!leaderboardUrl) throw new Error(missingApiMessage);
+      const res = await fetch(leaderboardUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -407,10 +418,13 @@ function VictoryScreen({
             <button
               type="submit"
               className="title-start"
-              disabled={status === "loading" || !name.trim()}
+              disabled={status === "loading" || !name.trim() || !leaderboardUrl}
             >
               {status === "loading" ? "SAVING…" : "ADD TO LEADERBOARD"}
             </button>
+            {!leaderboardUrl && (
+              <p className="victory-error">{missingApiMessage}</p>
+            )}
             {status === "error" && (
               <p className="victory-error">Failed to save — check your connection.</p>
             )}
@@ -468,17 +482,23 @@ function LeaderboardScreen({
 }) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch("/api/leaderboard")
+    if (!leaderboardUrl) {
+      setError(missingApiMessage);
+      setLoading(false);
+      return;
+    }
+
+    fetch(leaderboardUrl)
       .then((r) => {
         if (!r.ok) throw new Error("fetch failed");
         return r.json() as Promise<LeaderboardEntry[]>;
       })
       .then(setEntries)
-      .catch(() => setError(true))
+      .catch(() => setError("Could not reach the server."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -488,7 +508,7 @@ function LeaderboardScreen({
         <h2 className="lb-title">LEADERBOARD</h2>
 
         {loading && <p className="lb-empty">Loading…</p>}
-        {error && <p className="lb-empty">Could not reach the server.</p>}
+        {error && <p className="lb-empty">{error}</p>}
         {!loading && !error && entries.length === 0 && (
           <p className="lb-empty">No runs yet — be the first to descend.</p>
         )}

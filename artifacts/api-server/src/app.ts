@@ -6,6 +6,30 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+const corsAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+for (const origin of corsAllowedOrigins) {
+  let parsedOrigin: URL;
+  try {
+    parsedOrigin = new URL(origin);
+  } catch {
+    throw new Error(
+      "CORS_ALLOWED_ORIGINS must contain comma-separated origins without paths.",
+    );
+  }
+  if (
+    !["http:", "https:"].includes(parsedOrigin.protocol) ||
+    parsedOrigin.origin !== origin
+  ) {
+    throw new Error(
+      "CORS_ALLOWED_ORIGINS must contain comma-separated origins without paths.",
+    );
+  }
+}
+
 app.use(
   pinoHttp({
     logger,
@@ -25,7 +49,7 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(cors({ origin: corsAllowedOrigins, methods: ["GET", "POST"] }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
